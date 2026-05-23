@@ -1,472 +1,318 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Staff Portal - Tibiao Tourism</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/fonts.css">
-    <script src="../js/vendor/lucide.js"></script>
-    <script src="../js/vendor/chart.js"></script>
-    <script src="../js/datadash.js"></script>
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/datadash.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="../js/vendor/lucide.js"></script>
+    <script src="../js/vendor/qrcode.js"></script>
+    <script src="../js/vendor/html5-qrcode.js"></script>
+    <script src="../js/toast.js"></script>
+    <script src="../js/vendor/chart.js"></script>
+    <script src="../js/datadash.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Montserrat', 'sans-serif'],
+                        display: ['Montserrat', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: {
+                            DEFAULT: '#10b981',
+                            dark: '#059669',
+                            light: '#d1fae5'
+                        },
+                        sidebar: '#064e3b'
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        :root {
-            --sidebar-width: 280px;
-            --sidebar-bg: #0f172a;
-            --main-bg: #f8fafc;
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-
-        body {
-            background-color: var(--main-bg);
-            margin: 0;
-            font-family: 'Inter', sans-serif;
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .sidebar-transition { transition: transform 0.3s ease-in-out; }
+        
+        /* Required for dynamically injected tables by JS */
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th { text-align: left; padding: 1rem; color: #64748b; font-weight: 600; font-size: 0.85rem; border-bottom: 2px solid #f1f5f9; }
+        .data-table td { padding: 1.25rem 1rem; border-bottom: 1px solid #f1f5f9; color: #334155; font-size: 0.95rem; }
+        
+        /* QR Code Scanner Centering & Cover */
+        #checkout-reader {
+            width: 100% !important;
+            height: 100% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            overflow: hidden !important;
+            border-radius: 1rem !important;
         }
-
-        /* --- LOGIN SCREEN --- */
-        #login-screen {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            background-color: #ffffff;
-            position: relative;
-            overflow: hidden;
+        #checkout-reader video {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            border-radius: 1rem !important;
         }
-
-        .login-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 3rem;
-            border-radius: 2rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            width: 100%;
-            max-width: 420px;
-            z-index: 10;
+        
+        @keyframes scannerLaser {
+            0%, 100% { transform: translateY(-90px); }
+            50% { transform: translateY(90px); }
         }
-
-        /* --- DASHBOARD LAYOUT --- */
-        .dashboard-container {
-            display: none;
-            height: 100vh;
-            width: 100%;
-        }
-
-        .sidebar {
-            width: var(--sidebar-width);
-            background: var(--sidebar-bg);
-            color: white;
-            display: flex;
-            flex-direction: column;
-            padding: 1.5rem;
-            flex-shrink: 0;
-            box-shadow: 4px 0 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .sidebar-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 3rem;
-            padding: 0.5rem;
-        }
-
-        .sidebar-brand {
-            font-family: 'Montserrat', sans-serif;
-            font-size: 1.25rem;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-            color: white;
-        }
-
-        .nav-menu {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            flex-grow: 1;
-        }
-
-        .nav-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 16px;
-            border-radius: 12px;
-            cursor: pointer;
-            margin-bottom: 8px;
-            transition: all 0.2s ease;
-            color: #94a3b8;
-            font-weight: 500;
-        }
-
-        .nav-item:hover {
-            color: white;
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .nav-item.active {
-            background: var(--primary);
-            color: white;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-        }
-
-        .main-content {
-            flex-grow: 1;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .top-bar {
-            background: white;
-            padding: 1rem 2.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #e2e8f0;
-            height: 80px;
-        }
-
-        .user-profile {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 6px 12px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .user-info {
-            text-align: right;
-        }
-
-        .content-area {
-            padding: 2.5rem;
-            flex-grow: 1;
-        }
-
-        /* --- CARDS & STATS --- */
-        .stat-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .stat-card {
-            background: white;
-            padding: 1.75rem;
-            border-radius: 1.25rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            position: relative;
-            overflow: hidden;
-            transition: transform 0.2s;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-4px);
-        }
-
-        .stat-card-icon {
-            position: absolute;
-            right: 1.5rem;
-            top: 50%;
-            transform: translateY(-50%);
-            opacity: 0.1;
-            width: 48px;
-            height: 48px;
-            color: var(--primary);
-        }
-
-        .stat-value {
-            font-size: 2.25rem;
-            font-weight: 800;
-            color: #1e293b;
-            letter-spacing: -1px;
-        }
-
-        .stat-label {
-            color: #64748b;
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 0.5px;
-        }
-
-        /* --- TABLE --- */
-        .table-container {
-            background: white;
-            border-radius: 1.25rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-            padding: 1.5rem;
-            margin-top: 2rem;
-        }
-
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .data-table th {
-            text-align: left;
-            padding: 1rem;
-            color: #64748b;
-            font-weight: 600;
-            font-size: 0.85rem;
-            border-bottom: 2px solid #f1f5f9;
-        }
-
-        .data-table td {
-            padding: 1.25rem 1rem;
-            border-bottom: 1px solid #f1f5f9;
-            color: #334155;
-            font-size: 0.95rem;
-        }
-
-        .badge {
-            padding: 6px 12px;
-            border-radius: 2rem;
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-
-        .badge-active {
-            background: #dcfce7;
-            color: #166534;
-        }
-
-        .badge-out {
-            background: #f1f5f9;
-            color: #475569;
-        }
-
-        .btn-logout {
-            margin-top: auto;
-            color: #ef4444;
-            padding: 12px 16px;
-            border-radius: 12px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            transition: background 0.2s;
-        }
-
-        .btn-logout:hover {
-            background: rgba(239, 68, 68, 0.1);
-        }
-
-        /* --- MOBILE RESPONSIVENESS --- */
-        .menu-toggle {
-            display: none;
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: #ffffff;
-            padding: 0.5rem;
-        }
-
-        .sidebar-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(4px);
-            z-index: 40;
-        }
-
-        @media (max-width: 1024px) {
-            .sidebar {
-                position: fixed;
-                left: -100%;
-                top: 0;
-                bottom: 0;
-                z-index: 50;
-                transition: left 0.3s ease;
-            }
-
-            .sidebar.show {
-                left: 0;
-            }
-
-            .sidebar.show+.sidebar-overlay {
-                display: block;
-            }
-
-            .menu-toggle {
-                display: block;
-            }
-
-            .top-bar {
-                padding: 1rem 1.5rem;
-            }
-
-            .content-area {
-                padding: 1.5rem;
-            }
-
-            .stat-grid {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
-
-        @media (max-width: 640px) {
-            .stat-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .user-info {
-                display: none;
-            }
-
-            .top-bar {
-                padding: 1rem;
-                gap: 10px;
-            }
-
-            .top-bar h2 {
-                font-size: 1rem !important;
-                max-width: 140px;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-
-            .table-container {
-                padding: 1rem;
-                overflow-x: auto;
-            }
-
-            .data-table {
-                min-width: 600px;
-            }
-
-            .login-card {
-                padding: 2rem;
-                margin: 1rem;
-            }
-        }
-
-        /* Print Specific Styles */
+        
         @media print {
-            @page {
-                margin: 0;
-                /* Hides browser headers/footers */
-            }
-
-            .sidebar,
-            .top-bar,
-            .no-print,
-            .sidebar-overlay,
-            .menu-toggle,
-            .btn-logout,
-            .report-controls {
-                display: none !important;
-            }
-
-            .main-content {
-                margin: 0 !important;
-                padding: 0 !important;
-                width: 100% !important;
-            }
-
-            .printable-area {
-                padding: 2cm !important;
-                /* Proper margin for physical paper */
-            }
-
-            .report-table th,
-            .report-table td {
-                border: 1px solid #000 !important;
-            }
-
-            body {
-                background: white !important;
-            }
+            .no-print, #sidebar, header { display: none !important; }
+            #content-area { margin: 0; padding: 0; width: 100%; }
         }
     </style>
 </head>
 
-<body class="dashboard-themed">
-
+<body class="bg-gray-50 text-gray-800 antialiased overflow-hidden">
     
-
-
-    
-    <div id="dashboard-layout" class="dashboard-container">
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <img src="../images/logo.png" style="width: 50px; height: 50px; border-radius: 50%;" alt="Logo">
-                <span class="sidebar-brand">STAFF PANEL</span>
+    <div id="dashboard-layout" class="flex h-screen w-full">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="bg-gradient-to-b from-[#064e3b] to-[#01221a] text-white w-72 flex-shrink-0 flex flex-col shadow-xl z-20 sidebar-transition absolute lg:relative h-full -translate-x-full lg:translate-x-0">
+            <div class="p-6 flex items-center gap-4 mb-4 border-b border-white/10">
+                <div class="w-12 h-12 bg-white rounded-xl p-1 overflow-hidden shadow-lg shadow-primary/20">
+                    <img src="../images/logo.png" alt="Logo" class="w-full h-full object-cover">
+                </div>
+                <span class="font-display text-xs font-black tracking-tight leading-tight max-w-[170px] uppercase text-emerald-100">Tourist Digital Logging & Monitoring System</span>
             </div>
 
-            <ul class="nav-menu">
-                <li class="nav-item active" onclick="showView('dashboard')">
-                    <i data-lucide="layout-dashboard"></i> Dashboard
+            <ul class="flex-1 px-4 space-y-2 overflow-y-auto">
+                <li onclick="showView('dashboard'); updateActiveNav(this)" class="nav-item active flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer font-medium transition-all bg-primary text-white shadow-lg shadow-emerald-900/50">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i> Dashboard
                 </li>
-                <li class="nav-item" onclick="showView('visitors')">
-                    <i data-lucide="users"></i> Visitor Logs
+                <li onclick="showView('visitors'); updateActiveNav(this)" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-all">
+                    <i data-lucide="users" class="w-5 h-5"></i> Visitor Logs
                 </li>
-                <li class="nav-item" onclick="showView('payments')">
-                    <i data-lucide="banknote"></i> Payments
+                <li onclick="showView('payments'); updateActiveNav(this)" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-all">
+                    <i data-lucide="banknote" class="w-5 h-5"></i> Payments
                 </li>
-                <li class="nav-item" onclick="showView('reports')">
-                    <i data-lucide="trending-up"></i> Reports
-                </li>
-                <li class="nav-item" onclick="showView('attendance')">
-                    <i data-lucide="clock"></i> Staff Time
+                <li onclick="showView('attendance'); updateActiveNav(this)" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-all">
+                    <i data-lucide="clock" class="w-5 h-5"></i> Staff Time
                 </li>
             </ul>
 
-            <div class="btn-logout" onclick="logout()">
-                <i data-lucide="power"></i> <span>Logout</span>
+            <div class="p-4 border-t border-white/10 relative z-10">
+                <button onclick="logout()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all">
+                    <i data-lucide="power" class="w-5 h-5"></i> Logout
+                </button>
+            </div>
+            
+            <!-- Subtle Ecopark Silhouette Background -->
+            <div class="absolute bottom-0 left-0 right-0 pointer-events-none opacity-[0.08] z-0 select-none">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40" class="w-full h-auto text-emerald-300 fill-current">
+                    <polygon points="5,40 12,18 19,40" />
+                    <polygon points="12,40 20,10 28,40" />
+                    <polygon points="22,40 28,22 34,40" />
+                    <polygon points="30,40 38,15 46,40" />
+                    <polygon points="40,40 48,5 56,40" />
+                    <polygon points="50,40 56,25 62,40" />
+                    <polygon points="58,40 65,12 72,40" />
+                    <polygon points="68,40 75,20 82,40" />
+                    <polygon points="78,40 85,8 92,40" />
+                    <polygon points="88,40 94,22 100,40" />
+                    <polygon points="96,40 104,15 112,40" />
+                    <polygon points="108,40 115,25 120,40" />
+                </svg>
             </div>
         </aside>
 
-        <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+        <!-- Mobile Overlay -->
+        <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-10 hidden lg:hidden"></div>
 
-        <main class="main-content">
-            <header class="top-bar">
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <button class="menu-toggle" onclick="toggleSidebar()">
-                        <i data-lucide="menu"></i>
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col h-full relative overflow-hidden">
+            <header class="bg-white border-b border-gray-200 h-20 px-6 lg:px-10 flex items-center justify-between shrink-0 sticky top-0 z-10 shadow-sm">
+                <div class="flex items-center gap-4">
+                    <button onclick="toggleSidebar()" class="lg:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-xl transition-colors">
+                        <i data-lucide="menu" class="w-6 h-6"></i>
                     </button>
-                    <button id="back-btn-header" onclick="showView('dashboard')"
-                        style="display: none; background: none; border: none; cursor: pointer; color: #ffffff; padding: 0.5rem; align-items: center; justify-content: center;">
-                        <i data-lucide="arrow-left"></i>
+                    <button id="back-btn-header" onclick="showView('dashboard')" style="display: none;" class="p-2 text-gray-500 hover:bg-gray-100 rounded-xl transition-colors">
+                        <i data-lucide="arrow-left" class="w-5 h-5"></i>
                     </button>
-                    <h2 id="view-title" style="font-family: 'Montserrat'; font-size: 1.5rem; margin: 0;">Dashboard</h2>
+                    <h2 id="view-title" class="font-display text-2xl font-bold text-gray-800 tracking-tight">Dashboard</h2>
                 </div>
-                <div class="user-profile no-print">
-                    <div class="user-info">
-                        <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-main);"
-                            id="user-profile-name">Staff</div>
-                        <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: 600;"
-                            id="user-profile-role">Staff Portal</div>
+                
+                <div class="flex items-center gap-3 px-3 py-2 bg-gray-50 border border-gray-100 rounded-2xl no-print">
+                    <div class="text-right">
+                        <div id="user-profile-name" class="text-sm font-bold text-gray-800">Staff</div>
+                        <div id="user-profile-role" class="text-xs font-semibold text-primary uppercase tracking-wider">Staff Portal</div>
                     </div>
-                    <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--text-main);">
-                        <i data-lucide="user" style="width: 20px;"></i>
+                    <div class="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-primary">
+                        <i data-lucide="user" class="w-5 h-5"></i>
                     </div>
                 </div>
             </header>
 
-            <div id="content-area" class="content-area">
-                
+            <div id="content-area" class="flex-1 overflow-y-auto p-6 lg:p-10 bg-gray-50">
+                <!-- Dynamic Content Injected Here by JS -->
             </div>
         </main>
     </div>
 
+    <!-- Floating Quick Checkout Button -->
+    <button id="floating-checkout-btn" onclick="openCheckoutModal()" class="fixed bottom-6 right-6 z-40 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full p-4 shadow-lg hover:shadow-xl hover:shadow-emerald-600/30 transition-all duration-200 flex items-center justify-center group" title="Quick Checkout">
+        <i data-lucide="qr-code" class="w-6 h-6"></i>
+        <span class="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ease-in-out font-bold text-xs uppercase tracking-wider pl-0 group-hover:pl-2 whitespace-nowrap">Quick Checkout</span>
+    </button>
+
+    <!-- Quick Checkout Modal -->
+    <div id="checkout-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-2xl max-w-4xl w-full overflow-hidden transform scale-95 transition-all duration-300 flex flex-col max-h-[90vh]">
+            <!-- Modal Header -->
+            <div class="bg-gradient-to-r from-emerald-600 to-teal-700 p-6 text-white relative flex-shrink-0">
+                <div class="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full translate-x-1/3 -translate-y-1/3 blur-2xl"></div>
+                <div class="relative z-10 flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/20">
+                            <i data-lucide="qr-code" class="w-6 h-6 text-white"></i>
+                        </div>
+                        <div>
+                            <h2 class="font-display font-extrabold text-2xl tracking-tight">Quick Checkout</h2>
+                            <p class="text-emerald-100 text-xs md:text-sm mt-0.5">Scan tourist's QR code or enter ID manually to checkout.</p>
+                        </div>
+                    </div>
+                    <button onclick="closeCheckoutModal()" class="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-all">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-8 bg-gray-50/50 overflow-y-auto">
+                <!-- Scanner Panel -->
+                <div class="flex flex-col bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-1.5 h-6 bg-emerald-500 rounded-full"></div>
+                        <h3 class="font-display font-bold text-gray-800 text-sm md:text-base uppercase tracking-wider">QR Code Scanner</h3>
+                    </div>
+
+                    <!-- Scanner View Container -->
+                    <div class="relative w-full aspect-square bg-slate-50 rounded-2xl overflow-hidden border border-slate-200/85 shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)] mb-4">
+                        <div id="checkout-reader" class="absolute inset-0"></div>
+                        
+                        <!-- Active Scanner Guide (shown only when scanning) -->
+                        <div id="scanner-active-guide" class="hidden absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
+                            <!-- Scanning Box -->
+                            <div class="w-52 h-52 border border-white/20 rounded-3xl relative flex items-center justify-center shadow-[0_0_0_9999px_rgba(15,23,42,0.45)] backdrop-blur-[1px]">
+                                <!-- Corner Brackets -->
+                                <div class="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-emerald-500 rounded-tl-xl"></div>
+                                <div class="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-emerald-500 rounded-tr-xl"></div>
+                                <div class="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-emerald-500 rounded-bl-xl"></div>
+                                <div class="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-emerald-500 rounded-br-xl"></div>
+                                
+                                <!-- Laser Line -->
+                                <div class="absolute left-3 right-3 h-0.5 bg-emerald-400 shadow-[0_0_10px_#10b981] animate-[scannerLaser_2s_linear_infinite]"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Scanner Overlay (simulated guide) -->
+                        <div id="scanner-placeholder" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-10 bg-white/95 text-slate-500 backdrop-blur-sm">
+                            <div class="w-16 h-16 bg-emerald-50/50 border-2 border-emerald-500/35 border-dashed rounded-2xl flex items-center justify-center mb-3 animate-[pulse_2s_infinite]">
+                                <i data-lucide="camera" class="w-8 h-8 text-emerald-600"></i>
+                            </div>
+                            <p class="text-xs font-semibold text-slate-600 max-w-xs">Start the camera and point it at the tourist's screenshot QR code.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button id="btn-start-scanner" onclick="startCheckoutScanner()" 
+                            class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider">
+                            <i data-lucide="camera" class="w-4 h-4"></i> Start Camera
+                        </button>
+                        <button id="btn-stop-scanner" onclick="stopCheckoutScanner()" style="display: none;"
+                            class="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-rose-500/20 transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider">
+                            <i data-lucide="camera-off" class="w-4 h-4"></i> Stop Camera
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Manual / Status Panel -->
+                <div class="flex flex-col justify-between gap-6">
+                    <div class="flex flex-col bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+                        <div class="flex items-center gap-2 mb-4">
+                            <div class="w-1.5 h-6 bg-emerald-500 rounded-full"></div>
+                            <h3 class="font-display font-bold text-gray-800 text-sm md:text-base uppercase tracking-wider">Manual Checkout</h3>
+                        </div>
+
+                        <form id="checkout-manual-form" onsubmit="event.preventDefault(); processManualCheckout();" class="space-y-4">
+                            <div>
+                                <label class="block text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Registration ID / Reference Code</label>
+                                <div class="relative">
+                                    <i data-lucide="key-round" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
+                                    <input type="text" id="manual-checkout-id" placeholder="e.g. TIB-123456" required
+                                        class="w-full py-3.5 pl-12 pr-4 border border-gray-200 rounded-xl text-sm font-semibold outline-none transition-all focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 bg-gray-50 focus:bg-white uppercase">
+                                </div>
+                            </div>
+                            <button type="submit" 
+                                class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-slate-800/10 transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider">
+                                <i data-lucide="check-circle" class="w-4 h-4"></i> Checkout Visitor
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Result Log Container -->
+                    <div id="checkout-result-container" class="flex-1 bg-white border border-gray-100 rounded-2xl p-6 shadow-sm flex flex-col justify-center items-center text-center min-h-[160px]">
+                        <div class="text-gray-400 flex flex-col items-center">
+                            <i data-lucide="activity" class="w-8 h-8 text-gray-300 mb-2"></i>
+                            <p class="text-xs font-semibold">Waiting for action...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="../js/staff.js"></script>
     <script src="../js/sync-engine.js"></script>
-</body>
+    <script>
+        lucide.createIcons();
 
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            }
+        }
+
+        // Helper to update active styling for nav items
+        function updateActiveNav(clickedElement) {
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('active', 'bg-primary', 'text-white', 'shadow-lg', 'shadow-emerald-900/50');
+                el.classList.add('text-slate-400');
+            });
+            clickedElement.classList.add('active', 'bg-primary', 'text-white', 'shadow-lg', 'shadow-emerald-900/50');
+            clickedElement.classList.remove('text-slate-400');
+            
+            // Auto close on mobile
+            if (window.innerWidth < 1024) {
+                toggleSidebar();
+            }
+        }
+    </script>
+</body>
 </html>

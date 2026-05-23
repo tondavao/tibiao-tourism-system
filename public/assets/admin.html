@@ -1,544 +1,191 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Portal - Tibiao Tourism</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/fonts.css">
-    <script src="../js/vendor/lucide.js"></script>
-    <script src="../js/vendor/chart.js"></script>
-    <script src="../js/datadash.js"></script>
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/datadash.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="../js/vendor/lucide.js"></script>
+    <script src="../js/vendor/qrcode.js"></script>
+    <script src="../js/toast.js"></script>
+    <script src="../js/vendor/chart.js"></script>
+    <script src="../js/datadash.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Montserrat', 'sans-serif'],
+                        display: ['Montserrat', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: {
+                            DEFAULT: '#10b981',
+                            dark: '#059669',
+                            light: '#d1fae5'
+                        },
+                        sidebar: '#064e3b'
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        :root {
-            --sidebar-width: 280px;
-            --sidebar-bg: #0f172a;
-            --main-bg: #f8fafc;
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-
-        body {
-            background-color: var(--main-bg);
-            margin: 0;
-            font-family: 'Inter', sans-serif;
-        }
-
-        /* --- LOGIN SCREEN --- */
-        #login-screen {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            background: #ffffff !important;
-            position: relative;
-            overflow: hidden;
-        }
-
-        #login-screen .btn-primary {
-            background: var(--primary) !important;
-            box-shadow: none !important;
-        }
-
-        .login-card {
-            background: #ffffff;
-            padding: 3rem;
-            border-radius: 2rem;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
-            width: 100%;
-            max-width: 420px;
-            z-index: 10;
-            border: 1px solid #e2e8f0;
-        }
-
-        /* --- DASHBOARD LAYOUT --- */
-        .dashboard-container {
-            display: none;
-            height: 100vh;
-            width: 100%;
-        }
-
-        .sidebar {
-            width: var(--sidebar-width);
-            background: var(--sidebar-bg);
-            color: white;
-            display: flex;
-            flex-direction: column;
-            padding: 1.5rem;
-            flex-shrink: 0;
-            box-shadow: 4px 0 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .sidebar-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 3rem;
-            padding: 0.5rem;
-        }
-
-        .sidebar-brand {
-            font-family: 'Montserrat', sans-serif;
-            font-size: 1.25rem;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-            color: white;
-        }
-
-        .nav-menu {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            flex-grow: 1;
-        }
-
-        .nav-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 16px;
-            border-radius: 12px;
-            cursor: pointer;
-            margin-bottom: 8px;
-            transition: all 0.2s ease;
-            color: #94a3b8;
-            font-weight: 500;
-        }
-
-        .nav-item:hover {
-            color: white;
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .nav-item.active {
-            background: var(--primary);
-            color: white;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-        }
-
-        .main-content {
-            flex-grow: 1;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .top-bar {
-            background: white;
-            padding: 1rem 2.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #e2e8f0;
-            height: 80px;
-        }
-
-        .user-profile {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 6px 12px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .user-info {
-            text-align: right;
-        }
-
-        .content-area {
-            padding: 2.5rem;
-            flex-grow: 1;
-        }
-
-        /* --- CARDS & STATS --- */
-        .stat-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .stat-card {
-            background: white;
-            padding: 1.75rem;
-            border-radius: 1.25rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            position: relative;
-            overflow: hidden;
-            transition: transform 0.2s;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-4px);
-        }
-
-        .stat-card-icon {
-            position: absolute;
-            right: 1.5rem;
-            top: 50%;
-            transform: translateY(-50%);
-            opacity: 0.1;
-            width: 48px;
-            height: 48px;
-            color: var(--primary);
-        }
-
-        .stat-value {
-            font-size: 2.25rem;
-            font-weight: 800;
-            color: #1e293b;
-            letter-spacing: -1px;
-        }
-
-        .stat-label {
-            color: #64748b;
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 0.5px;
-        }
-
-        /* --- TABLE --- */
-        .table-container {
-            background: white;
-            border-radius: 1.25rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-            padding: 1.5rem;
-            margin-top: 2rem;
-        }
-
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .data-table th {
-            text-align: left;
-            padding: 1rem;
-            color: #64748b;
-            font-weight: 600;
-            font-size: 0.85rem;
-            border-bottom: 2px solid #f1f5f9;
-        }
-
-        .data-table td {
-            padding: 1.25rem 1rem;
-            border-bottom: 1px solid #f1f5f9;
-            color: #334155;
-            font-size: 0.95rem;
-        }
-
-        .badge {
-            padding: 6px 12px;
-            border-radius: 2rem;
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-
-        .badge-active {
-            background: #dcfce7;
-            color: #166534;
-        }
-
-        .badge-out {
-            background: #f1f5f9;
-            color: #475569;
-        }
-
-        .btn-logout {
-            margin-top: auto;
-            color: #ef4444;
-            padding: 12px 16px;
-            border-radius: 12px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            transition: background 0.2s;
-        }
-
-        .btn-logout:hover {
-            background: rgba(239, 68, 68, 0.1);
-        }
-
-        .dashboard-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            gap: 1rem;
-        }
-
-        @media (max-width: 640px) {
-            .dashboard-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .dashboard-header .btn {
-                width: 100%;
-            }
-        }
-
-        /* User Management Specific Styles */
-        .user-form-card {
-            background: white;
-            padding: 2.5rem;
-            border-radius: 1.25rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            margin-bottom: 2rem;
-        }
-
-        .user-form-card input,
-        .user-form-card select {
-            width: 100%;
-            padding: 0.8rem 1rem;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            font-size: 0.95rem;
-            background-color: #fff;
-            transition: border-color 0.2s;
-        }
-
-        .user-form-card input:focus,
-        .user-form-card select:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        @media (max-width: 640px) {
-            .user-form-card {
-                padding: 1.5rem;
-            }
-
-            .content-area {
-                padding: 1rem;
-            }
-        }
-
-        /* --- MOBILE RESPONSIVENESS --- */
-        .menu-toggle {
-            display: none;
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: #ffffff;
-            padding: 0.5rem;
-        }
-
-        .sidebar-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(4px);
-            z-index: 40;
-        }
-
-        .admin-form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-        }
-
-        @media (max-width: 1024px) {
-            .sidebar {
-                position: fixed;
-                left: -100%;
-                top: 0;
-                bottom: 0;
-                z-index: 50;
-                transition: left 0.3s ease;
-            }
-
-            .sidebar.show {
-                left: 0;
-            }
-
-            .sidebar.show+.sidebar-overlay {
-                display: block;
-            }
-
-            .menu-toggle {
-                display: block;
-            }
-
-            .top-bar {
-                padding: 1rem 1.5rem;
-            }
-
-            .content-area {
-                padding: 1.5rem;
-            }
-
-            .stat-grid {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
-
-        @media (max-width: 640px) {
-            .stat-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .top-bar {
-                padding: 1rem;
-                gap: 10px;
-            }
-
-            .top-bar h2 {
-                font-size: 1rem !important;
-                max-width: 140px;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-
-            .user-info {
-                display: none;
-            }
-
-            .admin-form-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .table-container {
-                overflow-x: auto;
-            }
-
-            .data-table {
-                min-width: 600px;
-            }
-
-            .login-card {
-                padding: 2rem;
-                margin: 1rem;
-            }
-        }
-
-        /* Print Specific Styles */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .sidebar-transition { transition: transform 0.3s ease-in-out; }
+        
+        /* Required for dynamically injected tables by JS */
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th { text-align: left; padding: 1rem; color: #64748b; font-weight: 600; font-size: 0.85rem; border-bottom: 2px solid #f1f5f9; }
+        .data-table td { padding: 1.25rem 1rem; border-bottom: 1px solid #f1f5f9; color: #334155; font-size: 0.95rem; }
+        
         @media print {
-            @page {
-                margin: 0;
-                /* Hides browser headers/footers */
-            }
-
-            .sidebar,
-            .top-bar,
-            .no-print,
-            .sidebar-overlay,
-            .menu-toggle,
-            .btn-logout,
-            .report-controls {
-                display: none !important;
-            }
-
-            .main-content {
-                margin: 0 !important;
-                padding: 0 !important;
-                width: 100% !important;
-            }
-
-            .printable-area {
-                padding: 2cm !important;
-                /* Proper margin for physical paper */
-            }
-
-            .report-table th,
-            .report-table td {
-                border: 1px solid #000 !important;
-            }
-
-            body {
-                background: white !important;
-            }
+            .no-print, #sidebar, header { display: none !important; }
+            #content-area { margin: 0; padding: 0; width: 100%; }
         }
     </style>
 </head>
 
-<body class="dashboard-themed">
-
+<body class="bg-gray-50 text-gray-800 antialiased overflow-hidden">
     
-
-
-    
-    <div id="dashboard-layout" class="dashboard-container">
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <img src="../images/logo.png" style="width: 50px; height: 50px; border-radius: 50%;" alt="Logo">
-                <span class="sidebar-brand">ADMIN PANEL</span>
+    <div id="dashboard-layout" class="flex h-screen w-full">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="bg-gradient-to-b from-[#064e3b] to-[#01221a] text-white w-72 flex-shrink-0 flex flex-col shadow-xl z-20 sidebar-transition absolute lg:relative h-full -translate-x-full lg:translate-x-0">
+            <div class="p-6 flex items-center gap-4 mb-4 border-b border-white/10">
+                <div class="w-12 h-12 bg-white rounded-xl p-1 overflow-hidden shadow-lg shadow-primary/20">
+                    <img src="../images/logo.png" alt="Logo" class="w-full h-full object-cover">
+                </div>
+                <span class="font-display text-xs font-black tracking-tight leading-tight max-w-[170px] uppercase text-emerald-100">Tourist Digital Logging & Monitoring System</span>
             </div>
 
-            <ul class="nav-menu">
-                <li class="nav-item active" onclick="showView('dashboard')">
-                    <i data-lucide="layout-dashboard"></i> Dashboard
+            <ul class="flex-1 px-4 space-y-2 overflow-y-auto">
+                <li onclick="showView('dashboard'); updateActiveNav(this)" class="nav-item active flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer font-medium transition-all bg-primary text-white shadow-lg shadow-emerald-900/50">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i> Dashboard
                 </li>
-                <li class="nav-item" onclick="showView('visitors')">
-                    <i data-lucide="users"></i> Visitor Logs
+                <li onclick="showView('visitors'); updateActiveNav(this)" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-all">
+                    <i data-lucide="users" class="w-5 h-5"></i> Visitor Logs
                 </li>
-                <li class="nav-item" onclick="showView('payments')">
-                    <i data-lucide="banknote"></i> Payments
+                <li onclick="showView('payments'); updateActiveNav(this)" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-all">
+                    <i data-lucide="banknote" class="w-5 h-5"></i> Payments
                 </li>
-                <li class="nav-item" onclick="showView('reports')">
-                    <i data-lucide="trending-up"></i> Reports
+                <li onclick="showView('reports'); updateActiveNav(this)" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-all">
+                    <i data-lucide="trending-up" class="w-5 h-5"></i> Reports
                 </li>
-                <li class="nav-item" onclick="showView('attendance')">
-                    <i data-lucide="clock"></i> Staff Time Log
+                <li onclick="showView('attendance'); updateActiveNav(this)" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-all">
+                    <i data-lucide="clock" class="w-5 h-5"></i> Staff Time Log
                 </li>
-                <li class="nav-item" onclick="showView('accounts')">
-                    <i data-lucide="user-cog"></i> Accounts
+                <li onclick="showView('accounts'); updateActiveNav(this)" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-all">
+                    <i data-lucide="user-cog" class="w-5 h-5"></i> Accounts
+                </li>
+                <li onclick="showView('settings'); updateActiveNav(this)" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-all">
+                    <i data-lucide="settings" class="w-5 h-5"></i> Settings
                 </li>
             </ul>
 
-            <div class="btn-logout" onclick="logout()">
-                <i data-lucide="power"></i> <span>Logout</span>
+            <div class="p-4 border-t border-white/10 relative z-10">
+                <button onclick="logout()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all">
+                    <i data-lucide="power" class="w-5 h-5"></i> Logout
+                </button>
+            </div>
+            
+            <!-- Subtle Ecopark Silhouette Background -->
+            <div class="absolute bottom-0 left-0 right-0 pointer-events-none opacity-[0.08] z-0 select-none">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40" class="w-full h-auto text-emerald-300 fill-current">
+                    <polygon points="5,40 12,18 19,40" />
+                    <polygon points="12,40 20,10 28,40" />
+                    <polygon points="22,40 28,22 34,40" />
+                    <polygon points="30,40 38,15 46,40" />
+                    <polygon points="40,40 48,5 56,40" />
+                    <polygon points="50,40 56,25 62,40" />
+                    <polygon points="58,40 65,12 72,40" />
+                    <polygon points="68,40 75,20 82,40" />
+                    <polygon points="78,40 85,8 92,40" />
+                    <polygon points="88,40 94,22 100,40" />
+                    <polygon points="96,40 104,15 112,40" />
+                    <polygon points="108,40 115,25 120,40" />
+                </svg>
             </div>
         </aside>
 
-        <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+        <!-- Mobile Overlay -->
+        <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-10 hidden lg:hidden"></div>
 
-        <main class="main-content">
-            <header class="top-bar">
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <button class="menu-toggle" onclick="toggleSidebar()">
-                        <i data-lucide="menu"></i>
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col h-full relative overflow-hidden">
+            <header class="bg-white border-b border-gray-200 h-20 px-6 lg:px-10 flex items-center justify-between shrink-0 sticky top-0 z-10 shadow-sm">
+                <div class="flex items-center gap-4">
+                    <button onclick="toggleSidebar()" class="lg:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-xl transition-colors">
+                        <i data-lucide="menu" class="w-6 h-6"></i>
                     </button>
-                    <button id="back-btn-header" onclick="showView('dashboard')"
-                        style="display: none; background: none; border: none; cursor: pointer; color: #ffffff; padding: 0.5rem; align-items: center; justify-content: center;">
-                        <i data-lucide="arrow-left"></i>
+                    <button id="back-btn-header" onclick="showView('dashboard')" style="display: none;" class="p-2 text-gray-500 hover:bg-gray-100 rounded-xl transition-colors">
+                        <i data-lucide="arrow-left" class="w-5 h-5"></i>
                     </button>
-                    <h2 id="view-title" style="font-family: 'Montserrat'; font-size: 1.5rem; margin: 0;">Dashboard</h2>
+                    <h2 id="view-title" class="font-display text-2xl font-bold text-gray-800 tracking-tight">Dashboard</h2>
                 </div>
-                <div class="user-profile no-print">
-                    <div class="user-info">
-                        <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-main);"
-                            id="admin-profile-name">Admin</div>
-                        <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: 600;"
-                            id="admin-profile-role">Administrator</div>
+                
+                <div class="flex items-center gap-3 px-3 py-2 bg-gray-50 border border-gray-100 rounded-2xl no-print">
+                    <div class="text-right">
+                        <div id="admin-profile-name" class="text-sm font-bold text-gray-800">Admin</div>
+                        <div id="admin-profile-role" class="text-xs font-semibold text-primary uppercase tracking-wider">Administrator</div>
                     </div>
-                    <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--text-main);">
-                        <i data-lucide="user" style="width: 20px;"></i>
+                    <div class="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-primary">
+                        <i data-lucide="user" class="w-5 h-5"></i>
                     </div>
                 </div>
             </header>
 
-            <div id="content-area" class="content-area">
-                
+            <div id="content-area" class="flex-1 overflow-y-auto p-6 lg:p-10 bg-gray-50">
+                <!-- Dynamic Content Injected Here by JS -->
             </div>
         </main>
     </div>
 
     <script src="../js/admin.js"></script>
     <script src="../js/sync-engine.js"></script>
-</body>
+    <script>
+        lucide.createIcons();
 
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            }
+        }
+
+        // Helper to update active styling for nav items
+        function updateActiveNav(clickedElement) {
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('active', 'bg-primary', 'text-white', 'shadow-lg', 'shadow-emerald-900/50');
+                el.classList.add('text-slate-400');
+            });
+            clickedElement.classList.add('active', 'bg-primary', 'text-white', 'shadow-lg', 'shadow-emerald-900/50');
+            clickedElement.classList.remove('text-slate-400');
+            
+            // Auto close on mobile
+            if (window.innerWidth < 1024) {
+                toggleSidebar();
+            }
+        }
+    </script>
+</body>
 </html>

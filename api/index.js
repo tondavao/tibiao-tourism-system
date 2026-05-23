@@ -61,9 +61,17 @@ app.get('/api/init-db', async (req, res) => {
                 total TEXT,
                 status TEXT DEFAULT 'Active',
                 payment_status TEXT DEFAULT 'Paid',
+                recieved_by TEXT DEFAULT 'Online',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
+
+        // Migration: Attempt to add recieved_by if it doesn't exist
+        try {
+            await pool.query("ALTER TABLE visitors ADD COLUMN recieved_by TEXT DEFAULT 'Online'");
+        } catch (e) {
+            // Column already exists, ignore
+        }
 
         await pool.query(`
             CREATE TABLE IF NOT EXISTS attendance (
@@ -81,10 +89,38 @@ app.get('/api/init-db', async (req, res) => {
         `);
 
 
+
         const adminCheck = await pool.query("SELECT COUNT(*) FROM users");
         if (parseInt(adminCheck.rows[0].count) === 0) {
             await pool.query("INSERT INTO users (username, password, role, level) VALUES ($1, $2, $3, $4)",
                 ['admin', 'password123', 'Administrator', 'admin']);
+        }
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
+        `);
+
+        const settingsCheck = await pool.query("SELECT COUNT(*) FROM settings");
+        if (parseInt(settingsCheck.rows[0].count) === 0) {
+            await pool.query("INSERT INTO settings (key, value) VALUES ($1, $2)",
+                ['statuses', JSON.stringify([
+                    { value: 'Regular', discount: 0 },
+                    { value: 'PWD', discount: 0.20 },
+                    { value: 'Senior Citizen', discount: 0.20 }
+                ])]);
+            await pool.query("INSERT INTO settings (key, value) VALUES ($1, $2)",
+                ['resorts', JSON.stringify(['Calawag', 'BlueWave', 'Campolly'])]);
+            await pool.query("INSERT INTO settings (key, value) VALUES ($1, $2)",
+                ['visitor_types', JSON.stringify([
+                    { value: 'Domestic Local', fee: 20 },
+                    { value: 'Domestic National', fee: 50 },
+                    { value: 'Foreigner', fee: 50 }
+                ])]);
+            await pool.query("INSERT INTO settings (key, value) VALUES ($1, $2)",
+                ['durations', JSON.stringify(['Same Day', 'Overnight', '2-3 Days', 'Week Long'])]);
         }
 
         res.json({ message: "PostgreSQL Database tables created and initialized successfully!" });
@@ -94,7 +130,39 @@ app.get('/api/init-db', async (req, res) => {
     }
 });
 
+app.get('/api/settings', async (req, res) => {
+    try {
+        const { rows } = await pool.query("SELECT * FROM settings");
+        const settings = {};
+        rows.forEach(r => {
+            try {
+                settings[r.key] = JSON.parse(r.value);
+            } catch (e) {
+                settings[r.key] = r.value;
+            }
+        });
+        res.json(settings);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
+app.post('/api/settings', async (req, res) => {
+    try {
+        const { key, value } = req.body;
+        if (!key || value === undefined) {
+            return res.status(400).json({ error: 'Key and value are required' });
+        }
+        const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
+        await pool.query(
+            "INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
+            [key, valueStr]
+        );
+        res.json({ message: 'Settings saved successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 app.get('/api/visitors', async (req, res) => {
     try {
@@ -106,13 +174,14 @@ app.get('/api/visitors', async (req, res) => {
 
 app.post('/api/register', async (req, res) => {
     try {
-        const { id, name, address, age, gender, resort, visitorType, duration, members, total, paymentStatus } = req.body;
+        const { id, name, address, age, gender, resort, visitorType, duration, members, total, paymentStatus, recievedBy } = req.body;
         const membersStr = members ? JSON.stringify(members) : '[]';
         const payStatus = paymentStatus || 'Paid';
+        const recBy = recievedBy || 'Online';
 
         await pool.query(
-            "INSERT INTO visitors (id, name, address, age, gender, resort, visitor_type, duration, members, total, status, payment_status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'Active', $11)",
-            [id, name, address, age, gender, resort, visitorType, duration, membersStr, total, payStatus]
+            "INSERT INTO visitors (id, name, address, age, gender, resort, visitor_type, duration, members, total, status, payment_status, recieved_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'Active', $11, $12)",
+            [id, name, address, age, gender, resort, visitorType, duration, membersStr, total, payStatus, recBy]
         );
         res.json({ message: 'Visitor registered successfully', id });
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -131,8 +200,13 @@ app.post('/api/checkout', async (req, res) => {
 
 app.post('/api/visitors/payment-status', async (req, res) => {
     try {
-        const { id, paymentStatus } = req.body;
-        const result = await pool.query("UPDATE visitors SET payment_status = $1 WHERE id = $2", [paymentStatus, id]);
+        const { id, paymentStatus, recievedBy } = req.body;
+        let result;
+        if (recievedBy) {
+            result = await pool.query("UPDATE visitors SET payment_status = $1, recieved_by = $2 WHERE id = $3", [paymentStatus, recievedBy, id]);
+        } else {
+            result = await pool.query("UPDATE visitors SET payment_status = $1 WHERE id = $2", [paymentStatus, id]);
+        }
         if (result.rowCount === 0) return res.status(404).json({ message: 'Visitor not found' });
         res.json({ message: 'Payment status updated successfully', status: paymentStatus });
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -281,9 +355,21 @@ app.get('/api/attendance/logs', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.delete('/api/attendance/:id', async (req, res) => {
+    try {
+        const id = parseInt(req.params.id, 10);
+        const result = await pool.query("DELETE FROM attendance WHERE id = $1", [id]);
+        if (result.rowCount === 0) return res.status(404).json({ error: "Attendance log not found" });
+        res.json({ message: 'Attendance record deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
-app.get('/', (req, res) => res.sendFile(path.join(PAGES_DIR, 'index.html')));
-app.get('/index.html', (req, res) => res.sendFile(path.join(PAGES_DIR, 'index.html')));
+
+app.get('/', (req, res) => res.sendFile(path.join(PAGES_DIR, 'register.html')));
+app.get('/index.html', (req, res) => res.sendFile(path.join(PAGES_DIR, 'register.html')));
+app.get('/register.html', (req, res) => res.sendFile(path.join(PAGES_DIR, 'register.html')));
 app.get('/login.html', (req, res) => res.sendFile(path.join(PAGES_DIR, 'login.html')));
 app.get('/staff.html', (req, res) => res.sendFile(path.join(PAGES_DIR, 'staff.html')));
 app.get('/admin.html', (req, res) => res.sendFile(path.join(PAGES_DIR, 'admin.html')));

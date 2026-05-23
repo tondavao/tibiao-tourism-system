@@ -54,6 +54,7 @@ async function run() {
     await download('https://unpkg.com/lucide@latest/dist/umd/lucide.min.js', path.join(vendorJsDir, 'lucide.js'));
     await download('https://unpkg.com/html5-qrcode/html5-qrcode.min.js', path.join(vendorJsDir, 'html5-qrcode.js'));
     await download('https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.js', path.join(vendorJsDir, 'chart.js'));
+    await download('https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js', path.join(vendorJsDir, 'qrcode.js'));
 
     console.log("Downloading Fonts CSS...");
     const fontUrl = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@700;800&display=swap';

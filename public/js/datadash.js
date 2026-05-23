@@ -1,26 +1,54 @@
 
+function parseSQLiteDate(dateStr) {
+    if (!dateStr) return null;
+    if (typeof dateStr !== 'string') return new Date(dateStr);
+    if (dateStr.includes('T') || dateStr.includes('Z')) {
+        return new Date(dateStr);
+    }
+    let formatted = dateStr;
+    if (formatted.length === 19) { // YYYY-MM-DD HH:MM:SS
+        formatted = formatted.replace(' ', 'T') + 'Z';
+    } else if (formatted.length === 10) { // YYYY-MM-DD
+        formatted = formatted + 'T00:00:00Z';
+    }
+    return new Date(formatted);
+}
+window.parseSQLiteDate = parseSQLiteDate;
+
 async function renderDashboard(timeFilter = 'Daily') {
     const response = await fetch('/api/visitors');
     let visitors = await response.json();
+
+    const storedUser = localStorage.getItem('currentUser');
+    let currentUser = null;
+    if (storedUser) {
+        try {
+            currentUser = JSON.parse(storedUser);
+        } catch(e) {}
+    }
+
+    if (currentUser && currentUser.level === 'staff') {
+        visitors = visitors.filter(v => v.recieved_by === currentUser.username);
+    }
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
 
     if (timeFilter === 'Daily') {
-        visitors = visitors.filter(v => new Date(v.created_at) >= today);
+        visitors = visitors.filter(v => parseSQLiteDate(v.created_at) >= today);
     } else if (timeFilter === 'Weekly') {
         const lastWeek = new Date(today);
         lastWeek.setDate(lastWeek.getDate() - 7);
-        visitors = visitors.filter(v => new Date(v.created_at) >= lastWeek);
+        visitors = visitors.filter(v => parseSQLiteDate(v.created_at) >= lastWeek);
     } else if (timeFilter === 'Monthly') {
         visitors = visitors.filter(v => {
-            const vDate = new Date(v.created_at);
+            const vDate = parseSQLiteDate(v.created_at);
             return vDate.getMonth() === now.getMonth() && vDate.getFullYear() === now.getFullYear();
         });
     } else if (timeFilter === 'Annually') {
         visitors = visitors.filter(v => {
-            const vDate = new Date(v.created_at);
+            const vDate = parseSQLiteDate(v.created_at);
             return vDate.getFullYear() === now.getFullYear();
         });
     }
@@ -28,24 +56,27 @@ async function renderDashboard(timeFilter = 'Daily') {
     const activeCount = visitors.filter(v => v.status === 'Active').length;
     const checkoutCount = visitors.filter(v => v.status === 'Checked Out').length;
     let totalRevenue = 0;
-    visitors.forEach(v => totalRevenue += parseFloat(v.total.replace('₱', '').replace(',', '')));
+    visitors.forEach(v => {
+        const amount = v.total ? (parseFloat(v.total.replace(/[^0-9.-]/g, '')) || 0) : 0;
+        totalRevenue += amount;
+    });
 
     let recentTransactionsRows = visitors.slice().reverse().slice(0, 5).map(v => `
-        <tr style="cursor: pointer;" onclick="showView('payments')">
-            <td style="color:var(--text-main); font-weight: 500;">${v.name}</td>
-            <td><span class="badge ${v.status === 'Active' ? 'badge-active' : 'badge-out'}">${v.status}</span></td>
-            <td style="color:var(--text-main); font-weight: 600;">${v.total}</td>
-            <td style="color:var(--text-muted);">${new Date(v.created_at).toLocaleDateString()}</td>
-            <td style="color:var(--text-muted);">${v.resort}</td>
+        <tr class="hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-50 last:border-0" onclick="showView('payments')">
+            <td class="py-4 px-4 font-semibold text-gray-800">${v.name}</td>
+            <td class="py-4 px-4"><span class="px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full ${v.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}">${v.status}</span></td>
+            <td class="py-4 px-4 font-bold text-emerald-600">${v.total}</td>
+            <td class="py-4 px-4 text-gray-500 text-sm">${parseSQLiteDate(v.created_at).toLocaleDateString()}</td>
+            <td class="py-4 px-4 text-gray-500 text-sm">${v.resort}</td>
         </tr>
     `).join('');
 
     return `
         <!-- Dashboard Filter UI -->
-        <div style="margin: -1.25rem 0 1.5rem 0; display: flex; justify-content: flex-end;">
-            <div style="display: flex; align-items: center; gap: 8px; background: white; padding: 6px 12px; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <i data-lucide="filter" style="width: 14px; height: 14px; color: #64748b;"></i>
-                <select onchange="refreshDashboard(this.value)" style="border: none; font-size: 0.8rem; font-weight: 700; color: #1e293b; cursor: pointer; background: transparent; outline: none;">
+        <div class="flex justify-end mb-6">
+            <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm">
+                <i data-lucide="filter" class="w-4 h-4 text-gray-500"></i>
+                <select onchange="refreshDashboard(this.value)" class="border-none text-sm font-bold text-gray-800 bg-transparent focus:ring-0 cursor-pointer outline-none">
                     <option value="Daily" ${timeFilter === 'Daily' ? 'selected' : ''}>Today</option>
                     <option value="Weekly" ${timeFilter === 'Weekly' ? 'selected' : ''}>This Week</option>
                     <option value="Monthly" ${timeFilter === 'Monthly' ? 'selected' : ''}>This Month</option>
@@ -55,68 +86,67 @@ async function renderDashboard(timeFilter = 'Daily') {
             </div>
         </div>
 
-        <div class="stat-grid">
-            <div class="stat-card fade-in" onclick="showView('revenue')" style="cursor: pointer;">
-                <span class="stat-label">TOTAL COLLECTION FEE</span>
-                <span class="stat-value" style="margin-top:0.2rem">₱${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                <i data-lucide="trend-up" class="stat-card-icon" style="color: var(--success); opacity: 0.2;"></i>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 fade-in">
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100 flex flex-col relative overflow-hidden transition-all hover:-translate-y-1 hover:shadow-md cursor-pointer group" onclick="showView('revenue')">
+                <span class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Total Collection Fee</span>
+                <span class="text-3xl font-black text-gray-800">₱${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                <i data-lucide="trend-up" class="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 text-emerald-500 opacity-10 transition-transform group-hover:scale-110"></i>
             </div>
-            <div class="stat-card fade-in" onclick="showView('visitors')" style="cursor: pointer;">
-                <span class="stat-label">TOTAL ARRIVALS</span>
-                <span class="stat-value" style="margin-top:0.2rem">${visitors.length.toLocaleString()}</span>
-                <i data-lucide="users" class="stat-card-icon" style="color: var(--primary); opacity: 0.2;"></i>
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100 flex flex-col relative overflow-hidden transition-all hover:-translate-y-1 hover:shadow-md cursor-pointer group" onclick="showView('visitors')">
+                <span class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Total Arrivals</span>
+                <span class="text-3xl font-black text-gray-800">${visitors.length.toLocaleString()}</span>
+                <i data-lucide="users" class="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 text-blue-500 opacity-10 transition-transform group-hover:scale-110"></i>
             </div>
-            <div class="stat-card fade-in" onclick="showView('visitors-active')" style="cursor: pointer;">
-                <span class="stat-label">ACTIVE VISITORS</span>
-                <span class="stat-value" style="margin-top:0.2rem">${activeCount.toLocaleString()}</span>
-                <i data-lucide="user-check" class="stat-card-icon" style="color: var(--primary); opacity: 0.2;"></i>
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100 flex flex-col relative overflow-hidden transition-all hover:-translate-y-1 hover:shadow-md cursor-pointer group" onclick="showView('visitors-active')">
+                <span class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Active Visitors</span>
+                <span class="text-3xl font-black text-gray-800">${activeCount.toLocaleString()}</span>
+                <i data-lucide="user-check" class="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 text-primary opacity-10 transition-transform group-hover:scale-110"></i>
             </div>
-            <div class="stat-card fade-in" onclick="showView('visitors-out')" style="cursor: pointer;">
-                <span class="stat-label">CHECKED OUT</span>
-                <span class="stat-value" style="margin-top:0.2rem">${checkoutCount.toLocaleString()}</span>
-                <i data-lucide="log-out" class="stat-card-icon" style="color: var(--warning); opacity: 0.2;"></i>
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100 flex flex-col relative overflow-hidden transition-all hover:-translate-y-1 hover:shadow-md cursor-pointer group" onclick="showView('visitors-out')">
+                <span class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Checked Out</span>
+                <span class="text-3xl font-black text-gray-800">${checkoutCount.toLocaleString()}</span>
+                <i data-lucide="log-out" class="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 text-amber-500 opacity-10 transition-transform group-hover:scale-110"></i>
             </div>
         </div>
         
-        <div class="datadash-middle-grid fade-in">
-            <div class="chart-card">
-                <div class="chart-header">
-                    <span><span style="white-space: nowrap;">Collection Fee &</span><br>Visitor Growth</span>
-                    <button class="btn" onclick="showView('revenue')" style="width: auto; background:var(--sidebar-bg); border:1px solid var(--border-color); color:var(--text-main); font-size: 0.75rem; padding: 0.4rem 0.8rem; cursor: pointer;">View Chart</button>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6 fade-in">
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100 flex flex-col lg:col-span-2">
+                <div class="flex justify-between items-center mb-6">
+                    <span class="font-bold text-gray-800 text-lg">Collection Fee & Visitor Growth</span>
+                    <button class="bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium py-2 px-4 rounded-xl text-sm transition-colors border border-gray-200" onclick="showView('revenue')">View Full Chart</button>
                 </div>
-                <!-- DataDash chart will mount here -->
-                <div class="chart-container">
+                <div class="relative h-[300px] w-full">
                     <canvas id="dashboardRevenueChart"></canvas>
                 </div>
             </div>
-            <div class="chart-card">
-                <div class="chart-header">
-                    <span>Traffic Sources (Destinations)</span>
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100 flex flex-col">
+                <div class="flex justify-between items-center mb-6">
+                    <span class="font-bold text-gray-800 text-lg">Destination Distribution</span>
                 </div>
-                <div class="chart-container" style="display: flex; align-items: center; justify-content: center;">
+                <div class="relative h-[300px] w-full">
                     <canvas id="dashboardPieChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <div class="table-container fade-in" style="margin-top: 1.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h3 style="font-family: 'Montserrat'; font-size: 0.95rem; font-weight: 700; text-transform: uppercase;">Recent Transactions</h3>
-                <button class="btn btn-primary" onclick="showView('payments')" style="width: auto; padding: 0.4rem 1rem; font-size: 0.8rem; border-radius: 8px;">View All</button>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-6 mt-6 fade-in">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-display font-bold text-gray-800 uppercase tracking-wide">Recent Transactions</h3>
+                <button class="bg-primary hover:bg-emerald-600 text-white font-medium py-2 px-4 rounded-xl text-sm transition-colors" onclick="showView('payments')">View All</button>
             </div>
-            <div style="overflow-x: auto;">
-                <table class="data-table" style="width: 100%;">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
                     <thead>
-                        <tr>
-                            <th>CUSTOMER</th>
-                            <th>STATUS</th>
-                            <th>AMOUNT</th>
-                            <th>DATE</th>
-                            <th>DESTINATION</th>
+                        <tr class="border-b border-gray-100">
+                            <th class="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Customer</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Amount</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Destination</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${recentTransactionsRows || '<tr><td colspan="5" style="text-align:center;">No recent transactions for this period.</td></tr>'}
+                        ${recentTransactionsRows || '<tr><td colspan="5" class="py-8 text-center text-gray-400">No recent transactions for this period.</td></tr>'}
                     </tbody>
                 </table>
             </div>
@@ -129,25 +159,37 @@ async function initDashboardCharts(timeFilter = 'Daily') {
     const response = await fetch('/api/visitors');
     let visitors = await response.json();
 
+    const storedUser = localStorage.getItem('currentUser');
+    let currentUser = null;
+    if (storedUser) {
+        try {
+            currentUser = JSON.parse(storedUser);
+        } catch(e) {}
+    }
+
+    if (currentUser && currentUser.level === 'staff') {
+        visitors = visitors.filter(v => v.recieved_by === currentUser.username);
+    }
+
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
 
     let filteredVisitors = visitors;
     if (timeFilter === 'Daily') {
-        filteredVisitors = visitors.filter(v => new Date(v.created_at) >= today);
+        filteredVisitors = visitors.filter(v => parseSQLiteDate(v.created_at) >= today);
     } else if (timeFilter === 'Weekly') {
         const lastWeek = new Date(today);
         lastWeek.setDate(lastWeek.getDate() - 7);
-        filteredVisitors = visitors.filter(v => new Date(v.created_at) >= lastWeek);
+        filteredVisitors = visitors.filter(v => parseSQLiteDate(v.created_at) >= lastWeek);
     } else if (timeFilter === 'Monthly') {
         filteredVisitors = visitors.filter(v => {
-            const vDate = new Date(v.created_at);
+            const vDate = parseSQLiteDate(v.created_at);
             return vDate.getMonth() === now.getMonth() && vDate.getFullYear() === now.getFullYear();
         });
     } else if (timeFilter === 'Annually') {
         filteredVisitors = visitors.filter(v => {
-            const vDate = new Date(v.created_at);
+            const vDate = parseSQLiteDate(v.created_at);
             return vDate.getFullYear() === now.getFullYear();
         });
     }
@@ -173,10 +215,13 @@ async function initDashboardCharts(timeFilter = 'Daily') {
             }
             labels.push(label);
 
-            const daysVisitors = visitors.filter(v => new Date(v.created_at).toDateString() === d.toDateString());
+            const daysVisitors = visitors.filter(v => parseSQLiteDate(v.created_at).toDateString() === d.toDateString());
             visitorGrowth.push(daysVisitors.length);
             let dailyRev = 0;
-            daysVisitors.forEach(v => dailyRev += parseFloat(v.total.replace('₱', '').replace(',', '')) || 0);
+            daysVisitors.forEach(v => {
+                const amount = v.total ? (parseFloat(v.total.replace(/[^0-9.-]/g, '')) || 0) : 0;
+                dailyRev += amount;
+            });
             data.push(dailyRev);
         }
 
@@ -188,18 +233,18 @@ async function initDashboardCharts(timeFilter = 'Daily') {
                     {
                         label: 'Collection Fee (₱)',
                         data: data,
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        borderWidth: 3,
-                        tension: 0.4,
+                        borderColor: '#064e3b',
+                        backgroundColor: 'rgba(6, 78, 59, 0.05)',
+                        borderWidth: 2,
+                        tension: 0,
                         fill: true
                     },
                     {
                         label: 'Visitors',
                         data: visitorGrowth,
-                        borderColor: '#10b981',
+                        borderColor: '#d97706',
                         borderWidth: 2,
-                        tension: 0.4,
+                        tension: 0,
                         fill: false
                     }
                 ]
@@ -208,19 +253,25 @@ async function initDashboardCharts(timeFilter = 'Daily') {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { labels: { color: '#94a3b8' }, position: 'top' }
+                    legend: { labels: { color: '#475569', font: {family: 'Montserrat'} }, position: 'top' }
                 },
                 scales: {
                     y: {
-                        grid: { color: '#334155' },
+                        grid: { color: '#f1f5f9' },
                         ticks: {
-                            color: '#94a3b8',
+                            color: '#475569',
                             precision: 0,
-                            stepSize: 1
+                            stepSize: 1,
+                            font: {family: 'Montserrat'}
                         },
-                        beginAtZero: true
+                        beginAtZero: true,
+                        border: { display: false }
                     },
-                    x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                    x: { 
+                        grid: { display: false }, 
+                        ticks: { color: '#475569', font: {family: 'Montserrat'} },
+                        border: { display: false }
+                    }
                 }
             }
         });
@@ -242,7 +293,7 @@ async function initDashboardCharts(timeFilter = 'Daily') {
                 labels: Object.keys(resortCounts),
                 datasets: [{
                     data: Object.values(resortCounts),
-                    backgroundColor: ['#f59e0b', '#3b82f6', '#10b981', '#6366f1', '#ef4444'],
+                    backgroundColor: ['#064e3b', '#d97706', '#475569', '#10b981', '#334155'],
                     borderWidth: 0,
                     hoverOffset: 4
                 }]
@@ -250,9 +301,9 @@ async function initDashboardCharts(timeFilter = 'Daily') {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                cutout: '65%',
+                cutout: '75%',
                 plugins: {
-                    legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 } } }
+                    legend: { position: 'bottom', labels: { color: '#475569', font: { size: 12, family: 'Montserrat' }, padding: 20 } }
                 }
             }
         });
@@ -261,7 +312,7 @@ async function initDashboardCharts(timeFilter = 'Daily') {
 
 async function refreshDashboard(filter) {
     const contentArea = document.getElementById('content-area');
-    contentArea.innerHTML = `<div style="padding: 2rem; text-align: center;">Refreshing Dashboard...</div>`;
+    contentArea.innerHTML = `<div class="flex items-center justify-center h-64 text-gray-500 font-medium"><i data-lucide="loader-2" class="w-6 h-6 animate-spin mr-2"></i> Refreshing Dashboard...</div>`;
 
 
     const html = await renderDashboard(filter);

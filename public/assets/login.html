@@ -1,301 +1,239 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Management Portal - Tibiao Tourism</title>
     
-    <link rel="stylesheet" href="../css/fonts.css">
-    <link rel="stylesheet" href="../css/style.css">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="../js/vendor/lucide.js"></script>
+    <script src="../js/toast.js"></script>
 
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Montserrat', 'sans-serif'],
+                        display: ['Montserrat', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: {
+                            DEFAULT: '#10b981',
+                            dark: '#059669',
+                            light: '#d1fae5'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        :root {
-            --login-primary: #10b981;
-            --login-bg: #f8fafc;
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-
-        body {
-            background-color: var(--login-bg);
-            background-image: 
-                radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.05) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.05) 0px, transparent 50%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            overflow: hidden;
-        }
-
-        .login-card {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            width: 100%;
-            max-width: 400px;
-            padding: 3rem;
-            border-radius: 32px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            position: relative;
-            z-index: 10;
-        }
-
-        .login-header {
-            text-align: center;
-            margin-bottom: 2.5rem;
-        }
-
-        .logo-circle {
-            width: 90px;
-            height: 90px;
-            margin: 0 auto 1.5rem;
-            background: white;
-            border-radius: 50%;
-            padding: 5px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-        }
-
-        .logo-circle img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .login-title {
-            font-family: 'Montserrat', sans-serif;
-            font-size: 1.75rem;
-            font-weight: 800;
-            color: #1e293b;
-            margin: 0;
-            letter-spacing: -1px;
-        }
-
-        .login-subtitle {
-            font-size: 0.9rem;
-            color: #64748b;
-            margin-top: 0.5rem;
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-            position: relative;
-        }
-
-        .form-group label {
-            display: block;
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: #475569;
-            margin-bottom: 0.5rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .input-wrapper {
-            position: relative;
-            width: 100%;
-        }
-
-        .input-wrapper .input-icon, 
-        .input-wrapper .input-icon + svg {
-            position: absolute !important;
-            left: 1.25rem !important;
-            top: 50% !important;
-            transform: translateY(-50%) !important;
-            color: #94a3b8 !important;
-            width: 18px !important;
-            height: 18px !important;
-            pointer-events: none !important;
-            z-index: 10 !important;
-            transition: all 0.3s ease !important;
-        }
-
-        .toggle-password {
-            position: absolute !important;
-            right: 1.25rem !important;
-            top: 50% !important;
-            transform: translateY(-50%) !important;
-            background: none !important;
-            border: none !important;
-            color: #94a3b8 !important;
-            cursor: pointer !important;
-            padding: 0 !important;
-            z-index: 20 !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-        }
-
-        .toggle-password:hover {
-            color: var(--login-primary) !important;
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 0.85rem 3.5rem 0.85rem 3rem;
-            border: 2px solid #f1f5f9;
-            border-radius: 16px;
-            background: white;
-            font-size: 1rem;
-            font-weight: 600;
-            color: #1e293b;
-            transition: all 0.3s ease;
-            outline: none;
-        }
-
-        .form-group input:focus {
-            border-color: var(--login-primary);
-            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
-        }
-
-        .form-group input:focus ~ .input-icon,
-        .form-group input:focus ~ svg:not(.lucide-eye):not(.lucide-eye-off) {
-            color: var(--login-primary) !important;
-        }
-
-        .btn-login {
-            width: 100%;
-            padding: 1.125rem;
-            background: var(--login-primary);
-            color: white;
-            border: none;
-            border-radius: 16px;
-            font-size: 1.1rem;
-            font-weight: 800;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            margin-top: 2rem;
-            box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
-        }
-
-        .btn-login:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 20px 25px -5px rgba(16, 185, 129, 0.4);
-            filter: brightness(1.05);
-        }
-
-        .btn-login:active {
-            transform: translateY(0);
-        }
-
-        .back-home {
-            text-align: center;
-            margin-top: 2rem;
-        }
-
-        .back-home a {
-            color: #64748b;
-            text-decoration: none;
-            font-size: 0.9rem;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            transition: color 0.2s;
-        }
-
-        .back-home a:hover {
-            color: var(--login-primary);
-        }
-
-        .error-message {
-            background: #fef2f2;
-            color: #dc2626;
-            padding: 0.85rem;
-            border-radius: 12px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-bottom: 1.5rem;
-            display: none;
-            border: 1px solid #fee2e2;
-            animation: shake 0.4s ease-in-out;
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
-        }
-
-        /* Loading state */
-        .btn-login.loading {
-            pointer-events: none;
-            opacity: 0.8;
-        }
-
         .spinner {
-            width: 20px;
-            height: 20px;
             border: 3px solid rgba(255,255,255,0.3);
             border-top-color: white;
             border-radius: 50%;
-            display: none;
+            width: 24px; height: 24px;
             animation: spin 0.8s linear infinite;
         }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .btn-login.loading .spinner { display: block; }
-        .btn-login.loading span { display: none; }
-        .btn-login.loading i { display: none; }
-
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 
-<body>
-    <div class="login-card fade-in">
-        <div class="login-header">
-            <div class="logo-circle">
-                <img src="../images/logo.png" alt="Tibiao Tourism Logo">
+<body class="bg-white min-h-screen flex flex-col justify-between relative text-slate-800 font-sans lg:h-screen lg:overflow-hidden">
+    <!-- Top accent line -->
+    <div class="h-1.5 bg-primary w-full absolute top-0 left-0 z-50"></div>
+
+    <!-- Main Container -->
+    <div class="flex-grow flex items-center justify-center px-4 py-4 md:py-6 lg:py-0">
+        <div class="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+            
+            <!-- Left Column: Logos & System Title -->
+            <div class="lg:col-span-7 flex flex-col items-center lg:items-start text-center lg:text-left fade-in">
+                <!-- Logos row -->
+                <div class="flex flex-wrap items-center justify-center lg:justify-start gap-4 md:gap-5 mb-6">
+                    <img src="../images/Tibiao%20OS%20LOGO.png" alt="Tibiao OS Logo" class="h-20 md:h-24 lg:h-28 w-auto object-contain mix-blend-multiply">
+                    <img src="../images/logo.png" alt="Tibiao Tourism Logo" class="h-20 md:h-24 lg:h-28 w-auto object-contain mix-blend-multiply">
+                    <img src="../images/Bagong_Pilipinas_logo.png" alt="Bagong Pilipinas Logo" class="h-20 md:h-24 lg:h-28 w-auto object-contain mix-blend-multiply">
+                </div>
+                
+                <!-- Subtitle / Office details -->
+                <div class="space-y-0.5 mb-4">
+                    <p class="text-xs md:text-sm font-bold tracking-widest text-primary uppercase">Municipality of Tibiao</p>
+                    <p class="text-xs md:text-sm font-semibold tracking-wider text-slate-500 uppercase">Municipal Tourism Office</p>
+                </div>
+                
+                <!-- Main Title -->
+                <h1 class="font-display text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-black text-slate-800 tracking-tight leading-[1.1] uppercase">
+                    Tourist Digital Logging <br class="hidden md:inline">
+                    &amp; Monitoring System
+                </h1>
+                
+                <!-- Description -->
+                <p class="text-slate-500 font-medium text-xs md:text-sm mt-4 max-w-xl leading-relaxed">
+                    A unified digital logging and monitoring system for the Municipal Tourism Office of Tibiao, Antique, designed to ensure a seamless experience for visitors of Tibiao Eco-Park.
+                </p>
             </div>
-            <h1 class="login-title">Management</h1>
-            <p class="login-subtitle">Log in to your account</p>
+            
+            <!-- Right Column: Login Card -->
+            <div class="lg:col-span-5 flex justify-center lg:justify-end w-full fade-in">
+                <div class="bg-white border border-slate-300 rounded-2xl shadow-[0_20px_50px_rgba(15,23,42,0.1)] p-6 md:p-8 w-full max-w-[420px] relative">
+                    
+                    <!-- Login Header -->
+                    <div class="text-center mb-6">
+                        <h2 class="font-display text-xl md:text-2xl font-extrabold text-slate-800 uppercase tracking-tight">Log In</h2>
+                        <p class="text-slate-400 text-xs font-medium mt-1 leading-relaxed">
+                            Use your assigned account to access the Tourism Information System.
+                        </p>
+                        <!-- Thin divider -->
+                        <div class="h-[1px] bg-slate-200 w-full mt-4"></div>
+                    </div>
+
+                    <!-- Error Alert Box -->
+                    <div id="error-box" class="hidden bg-red-50 text-red-600 border border-red-200 p-3 rounded-lg text-xs font-semibold mb-4 shadow-sm animate-pulse"></div>
+
+                    <!-- Form -->
+                    <form id="unified-login-form" class="space-y-4">
+                        <div>
+                            <label for="username" class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Username</label>
+                            <div class="relative">
+                                <input type="text" id="username" placeholder="username" required autofocus
+                                    class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300/80 hover:border-slate-400 rounded-xl text-slate-800 font-medium focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none transition-all peer text-sm placeholder-slate-300">
+                                <i data-lucide="user" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 peer-focus:text-primary transition-colors"></i>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="password" class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Password</label>
+                            <div class="relative">
+                                <input type="password" id="password" placeholder="Password" required
+                                    class="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-300/80 hover:border-slate-400 rounded-xl text-slate-800 font-medium focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none transition-all peer text-sm placeholder-slate-300">
+                                <i data-lucide="lock" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 peer-focus:text-primary transition-colors"></i>
+                                <button type="button" onclick="togglePassword()" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors p-1">
+                                    <i data-lucide="eye-off" id="eye-icon" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Checkbox & Forgot Password -->
+                        <div class="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider pt-0.5">
+                            <label class="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors">
+                                <input type="checkbox" class="rounded border-slate-300 hover:border-slate-400 text-primary focus:ring-primary/10 w-3.5 h-3.5">
+                                <span>Remember Me</span>
+                            </label>
+                            <a href="#" class="hover:text-primary transition-colors">Forgot Password?</a>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <button type="submit" id="submit-btn" class="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-100 hover:shadow-emerald-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-4 text-xs uppercase tracking-wider group">
+                            <span id="btn-text" class="flex items-center justify-center gap-2">
+                                <span>Log In</span>
+                                <i data-lucide="log-in" class="w-4 h-4 transition-transform group-hover:translate-x-0.5"></i>
+                            </span>
+                            <div id="btn-spinner" class="spinner hidden"></div>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="w-full relative mt-auto overflow-hidden">
+        <!-- Eco Park Silhouette SVG -->
+        <div class="w-full h-12 sm:h-16 lg:h-20 relative select-none pointer-events-none bg-transparent">
+            <svg class="absolute bottom-0 left-0 w-full h-full" viewBox="0 0 1440 120" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <!-- Conifer / Pine Tree -->
+                    <g id="tree-pine">
+                        <path d="M10 0 L3 18 L7 18 L1 36 L6 36 L0 55 L20 55 L14 36 L19 36 L13 18 L17 18 Z" />
+                        <rect x="9" y="55" width="2" height="8" />
+                    </g>
+                    <!-- Deciduous / Canopy Tree -->
+                    <g id="tree-canopy">
+                        <path d="M10 45 C4 45 0 40 0 32 C0 28 2 24 5 21 C3 16 6 10 12 10 C14 6 20 6 24 10 C28 10 32 15 31 20 C34 23 35 28 34 32 C34 40 30 45 24 45 Z" />
+                        <rect x="15" y="44" width="3" height="12" />
+                    </g>
+                    <!-- Palm Tree -->
+                    <g id="tree-palm">
+                        <path d="M8 60 Q12 30 9 15 L11 15 Q14 30 10 60 Z" />
+                        <path d="M10 15 Q22 8 30 18 Q20 18 10 15 Z" />
+                        <path d="M10 15 Q0 6 -8 14 Q2 15 10 15 Z" />
+                        <path d="M10 15 Q26 18 28 28 Q18 24 10 15 Z" />
+                        <path d="M10 15 Q-4 18 -6 28 Q4 24 10 15 Z" />
+                        <path d="M10 15 Q14 0 16 -10 Q12 0 10 15 Z" />
+                    </g>
+                </defs>
+
+                <!-- Layer 1: Back Layer (Lightest Green / Most Opacity) -->
+                <g class="fill-emerald-800/15">
+                    <path d="M0 120 L0 75 Q 360 45, 720 70 T 1440 60 L 1440 120 Z" />
+                    <use href="#tree-pine" transform="translate(150, 40) scale(0.5)" />
+                    <use href="#tree-pine" transform="translate(180, 42) scale(0.45)" />
+                    <use href="#tree-canopy" transform="translate(320, 38) scale(0.5)" />
+                    <use href="#tree-palm" transform="translate(500, 32) scale(0.55)" />
+                    <use href="#tree-palm" transform="translate(530, 35) scale(0.5)" />
+                    <use href="#tree-pine" transform="translate(750, 38) scale(0.5)" />
+                    <use href="#tree-canopy" transform="translate(900, 48) scale(0.55)" />
+                    <use href="#tree-pine" transform="translate(1100, 42) scale(0.5)" />
+                    <use href="#tree-palm" transform="translate(1250, 38) scale(0.55)" />
+                </g>
+
+                <!-- Layer 2: Middle Layer (Medium Green) -->
+                <g class="fill-emerald-700/35">
+                    <path d="M0 120 L0 85 Q 250 65, 550 90 T 1100 75 T 1440 80 L 1440 120 Z" />
+                    <use href="#tree-canopy" transform="translate(80, 52) scale(0.7)" />
+                    <use href="#tree-pine" transform="translate(220, 48) scale(0.75)" />
+                    <use href="#tree-pine" transform="translate(250, 50) scale(0.65)" />
+                    <use href="#tree-palm" transform="translate(400, 45) scale(0.75)" />
+                    <use href="#tree-palm" transform="translate(440, 50) scale(0.7)" />
+                    <use href="#tree-canopy" transform="translate(650, 52) scale(0.7)" />
+                    <use href="#tree-pine" transform="translate(800, 44) scale(0.75)" />
+                    <use href="#tree-palm" transform="translate(980, 42) scale(0.8)" />
+                    <use href="#tree-canopy" transform="translate(1150, 48) scale(0.7)" />
+                    <use href="#tree-pine" transform="translate(1300, 45) scale(0.75)" />
+                </g>
+
+                <!-- Layer 3: Foreground Layer (Darkest Green, merges with background) -->
+                <g class="fill-emerald-950">
+                    <path d="M0 120 L0 100 Q 300 85, 600 105 T 1200 95 T 1440 100 L 1440 120 Z" />
+                    <use href="#tree-palm" transform="translate(50, 60) scale(0.95)" />
+                    <use href="#tree-canopy" transform="translate(180, 63) scale(0.9)" />
+                    <use href="#tree-pine" transform="translate(350, 60) scale(1.0)" />
+                    <use href="#tree-pine" transform="translate(480, 67) scale(0.95)" />
+                    <use href="#tree-palm" transform="translate(700, 65) scale(1.0)" />
+                    <use href="#tree-palm" transform="translate(750, 67) scale(0.85)" />
+                    <use href="#tree-canopy" transform="translate(900, 67) scale(0.9)" />
+                    <use href="#tree-pine" transform="translate(1050, 65) scale(1.0)" />
+                    <use href="#tree-palm" transform="translate(1200, 63) scale(0.95)" />
+                    <use href="#tree-canopy" transform="translate(1350, 67) scale(0.9)" />
+                </g>
+            </svg>
         </div>
 
-        <div id="error-box" class="error-message"></div>
-
-        <form id="unified-login-form">
-            <div class="form-group">
-                <label for="username">Email Address</label>
-                <div class="input-wrapper">
-                    <input type="text" id="username" placeholder="Enter your email" required autofocus>
-                    <i data-lucide="mail" class="input-icon"></i>
+        <!-- Footer Text Links and Info -->
+        <div class="bg-emerald-950 border-t border-emerald-900/40 relative z-10">
+            <div class="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-2 text-[10px] md:text-xs font-bold tracking-wider text-emerald-400/80 uppercase">
+                <div>
+                    © 2026 Municipal Government of Tibiao, Antique
+                </div>
+                <div class="flex gap-4">
+                    <span class="hover:text-white transition-colors cursor-pointer">LGU Tibiao</span>
+                    <span class="text-emerald-800">•</span>
+                    <span class="hover:text-white transition-colors cursor-pointer">Tourism Office</span>
+                    <span class="text-emerald-800">•</span>
+                    <span class="hover:text-white transition-colors cursor-pointer">RA 10173</span>
                 </div>
             </div>
-
-            <div class="form-group">
-                <label for="password">Password</label>
-                <div class="input-wrapper">
-                    <input type="password" id="password" placeholder="••••••••" required>
-                    <i data-lucide="lock" class="input-icon"></i>
-                    <button type="button" class="toggle-password" onclick="togglePassword()">
-                        <i data-lucide="eye-off" id="eye-icon" style="width: 20px; height: 20px;"></i>
-                    </button>
-                </div>
-            </div>
-
-            <button type="submit" class="btn-login" id="submit-btn">
-                <span>Log in</span>
-                <div class="spinner"></div>
-            </button>
-        </form>
-
-
-    </div>
+        </div>
+    </footer>
 
     <script>
         lucide.createIcons();
@@ -317,6 +255,8 @@
         const loginForm = document.getElementById('unified-login-form');
         const errorBox = document.getElementById('error-box');
         const submitBtn = document.getElementById('submit-btn');
+        const btnText = document.getElementById('btn-text');
+        const btnSpinner = document.getElementById('btn-spinner');
 
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -324,9 +264,10 @@
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
 
-            // Reset UI
-            errorBox.style.display = 'none';
-            submitBtn.classList.add('loading');
+            errorBox.classList.add('hidden');
+            submitBtn.classList.add('pointer-events-none', 'opacity-90');
+            btnText.classList.add('hidden');
+            btnSpinner.classList.remove('hidden');
 
             try {
                 const response = await fetch('/api/login', {
@@ -338,27 +279,23 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    // Save user session
                     localStorage.setItem('currentUser', JSON.stringify(data));
-                    
-                    // Route based on level
-                    if (data.level === 'admin') {
-                        window.location.href = 'admin.html';
-                    } else {
-                        window.location.href = 'staff.html';
-                    }
+                    window.location.href = data.level === 'admin' ? 'admin.html' : 'staff.html';
                 } else {
-                    errorBox.innerText = data.error || 'Invalid username or password';
-                    errorBox.style.display = 'block';
-                    submitBtn.classList.remove('loading');
+                    showError(data.error || 'Invalid username or password');
                 }
             } catch (err) {
-                errorBox.innerText = 'Network error. Please try again later.';
-                errorBox.style.display = 'block';
-                submitBtn.classList.remove('loading');
+                showError('Network error. Please try again later.');
             }
         });
+
+        function showError(msg) {
+            errorBox.innerText = msg;
+            errorBox.classList.remove('hidden');
+            submitBtn.classList.remove('pointer-events-none', 'opacity-90');
+            btnText.classList.remove('hidden');
+            btnSpinner.classList.add('hidden');
+        }
     </script>
 </body>
-
 </html>

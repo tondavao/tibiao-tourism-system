@@ -45,12 +45,17 @@ function createTables() {
         total TEXT,
         status TEXT DEFAULT 'Active',
         payment_status TEXT DEFAULT 'Paid',
+        recieved_by TEXT DEFAULT 'Online',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
 
     db.run(`ALTER TABLE visitors ADD COLUMN payment_status TEXT DEFAULT 'Paid'`, (err) => {
         if (!err) console.log("Added payment_status column to visitors table.");
+    });
+
+    db.run(`ALTER TABLE visitors ADD COLUMN recieved_by TEXT DEFAULT 'Online'`, (err) => {
+        if (!err) console.log("Added recieved_by column to visitors table.");
     });
 
     db.run(`CREATE TABLE IF NOT EXISTS users (
@@ -106,9 +111,80 @@ function createTables() {
             });
         });
     });
+
+    db.run(`CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    )`, (err) => {
+        if (err) {
+            console.error('Error creating settings table:', err.message);
+        } else {
+            console.log('Settings table ready.');
+            db.get("SELECT COUNT(*) as count FROM settings", (err, row) => {
+                if (row && row.count === 0) {
+                    const defaults = [
+                        {
+                            key: 'statuses',
+                            value: JSON.stringify([
+                                { value: 'Regular', discount: 0 },
+                                { value: 'PWD', discount: 0.20 },
+                                { value: 'Senior Citizen', discount: 0.20 }
+                            ])
+                        },
+                        {
+                            key: 'resorts',
+                            value: JSON.stringify(['Calawag', 'BlueWave', 'Campolly'])
+                        },
+                        {
+                            key: 'visitor_types',
+                            value: JSON.stringify([
+                                { value: 'Domestic Local', fee: 20 },
+                                { value: 'Domestic National', fee: 50 },
+                                { value: 'Foreigner', fee: 50 }
+                            ])
+                        },
+                        {
+                            key: 'durations',
+                            value: JSON.stringify(['Same Day', 'Overnight', '2-3 Days', 'Week Long'])
+                        }
+                    ];
+                    defaults.forEach(d => {
+                        db.run("INSERT INTO settings (key, value) VALUES (?, ?)", [d.key, d.value], (insertErr) => {
+                            if (insertErr) console.error(`Error seeding setting ${d.key}:`, insertErr.message);
+                        });
+                    });
+                }
+            });
+        }
+    });
 }
 
+app.get('/api/settings', (req, res) => {
+    db.all("SELECT * FROM settings", [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        const settings = {};
+        rows.forEach(r => {
+            try {
+                settings[r.key] = JSON.parse(r.value);
+            } catch (e) {
+                settings[r.key] = r.value;
+            }
+        });
+        res.json(settings);
+    });
+});
 
+app.post('/api/settings', (req, res) => {
+    const { key, value } = req.body;
+    if (!key || value === undefined) {
+        return res.status(400).json({ error: 'Key and value are required' });
+    }
+    const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
+    db.run("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", [key, valueStr], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Settings saved successfully' });
+    });
+});
 
 app.get('/api/visitors', (req, res) => {
     db.all("SELECT * FROM visitors ORDER BY created_at DESC", [], (err, rows) => {
@@ -120,16 +196,17 @@ app.get('/api/visitors', (req, res) => {
 
 app.post('/api/register', (req, res) => {
     console.log('Registration attempt:', req.body);
-    const { id, name, address, age, gender, resort, visitorType, duration, members, total, paymentStatus } = req.body;
+    const { id, name, address, age, gender, resort, visitorType, duration, members, total, paymentStatus, recievedBy } = req.body;
 
 
     const membersStr = members ? JSON.stringify(members) : '[]';
     const payStatus = paymentStatus || 'Paid';
+    const recBy = recievedBy || 'Online';
 
-    const sql = `INSERT OR IGNORE INTO visitors (id, name, address, age, gender, resort, visitor_type, duration, members, total, status, payment_status) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?)`;
+    const sql = `INSERT OR IGNORE INTO visitors (id, name, address, age, gender, resort, visitor_type, duration, members, total, status, payment_status, recieved_by) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?, ?)`;
 
-    db.run(sql, [id, name, address, age, gender, resort, visitorType, duration, membersStr, total, payStatus], function (err) {
+    db.run(sql, [id, name, address, age, gender, resort, visitorType, duration, membersStr, total, payStatus, recBy], function (err) {
         if (err) {
             console.error('DATABASE INSERT ERROR:', err.message);
             return res.status(500).json({ error: err.message });
@@ -147,10 +224,15 @@ app.post('/api/register', (req, res) => {
 
 
 app.post('/api/visitors/payment-status', (req, res) => {
-    const { id, paymentStatus } = req.body;
-    console.log(`Payment Status Update: [${id}] to [${paymentStatus}]`);
+    const { id, paymentStatus, recievedBy } = req.body;
+    console.log(`Payment Status Update: [${id}] to [${paymentStatus}] (recievedBy: ${recievedBy})`);
 
-    db.run("UPDATE visitors SET payment_status = ? WHERE id = ?", [paymentStatus, id], function (err) {
+    const sql = recievedBy
+        ? "UPDATE visitors SET payment_status = ?, recieved_by = ? WHERE id = ?"
+        : "UPDATE visitors SET payment_status = ? WHERE id = ?";
+    const params = recievedBy ? [paymentStatus, recievedBy, id] : [paymentStatus, id];
+
+    db.run(sql, params, function (err) {
         if (err) return res.status(500).json({ error: err.message });
         if (this.changes === 0) return res.status(404).json({ message: 'Visitor not found' });
         res.json({ message: 'Payment status updated successfully', status: paymentStatus });
@@ -176,6 +258,17 @@ app.post('/api/visitors/status', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         if (this.changes === 0) return res.status(404).json({ message: 'Visitor not found' });
         res.json({ message: 'Status updated successfully' });
+    });
+});
+
+app.delete('/api/visitors/:id', (req, res) => {
+    const { id } = req.params;
+    console.log(`Attempting to delete visitor: [${id}]`);
+    db.run("DELETE FROM visitors WHERE id = ?", [id], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        if (this.changes === 0) return res.status(404).json({ error: "Visitor not found" });
+        console.log(`Successfully deleted visitor: [${id}]`);
+        res.json({ message: 'Visitor record deleted successfully' });
     });
 });
 
@@ -343,9 +436,19 @@ app.get('/api/attendance/logs', (req, res) => {
     });
 });
 
+app.delete('/api/attendance/:id', (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    db.run("DELETE FROM attendance WHERE id = ?", [id], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        if (this.changes === 0) return res.status(404).json({ error: "Attendance log not found" });
+        res.json({ message: 'Attendance record deleted successfully' });
+    });
+});
 
-app.get('/', (req, res) => res.sendFile(path.join(PAGES_DIR, 'index.html')));
-app.get('/index.html', (req, res) => res.sendFile(path.join(PAGES_DIR, 'index.html')));
+
+app.get('/', (req, res) => res.sendFile(path.join(PAGES_DIR, 'register.html')));
+app.get('/index.html', (req, res) => res.sendFile(path.join(PAGES_DIR, 'register.html')));
+app.get('/register.html', (req, res) => res.sendFile(path.join(PAGES_DIR, 'register.html')));
 app.get('/login.html', (req, res) => res.sendFile(path.join(PAGES_DIR, 'login.html')));
 app.get('/staff.html', (req, res) => res.sendFile(path.join(PAGES_DIR, 'staff.html')));
 app.get('/admin.html', (req, res) => res.sendFile(path.join(PAGES_DIR, 'admin.html')));

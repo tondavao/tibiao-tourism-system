@@ -9,22 +9,38 @@ function showAlert(message) {
     if (existing) existing.remove();
 
     const overlay = document.createElement('div');
-    overlay.className = 'custom-alert-overlay';
+    overlay.className = 'custom-alert-overlay fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[9999] opacity-0 transition-opacity duration-200';
     overlay.innerHTML = `
-        <div class="custom-alert-card">
-            <div class="custom-alert-message">${message}</div>
-            <button class="custom-alert-btn" onclick="closeAlert()">OK</button>
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-[90%] text-center shadow-2xl border border-gray-100 transform scale-95 transition-transform duration-200">
+            <div class="text-gray-800 font-semibold text-base mb-6 leading-relaxed">${message}</div>
+            <button class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-6 rounded-xl transition-all shadow-md hover:shadow-lg focus:outline-none w-full" id="alert-ok">OK</button>
         </div>
     `;
     document.body.appendChild(overlay);
-    setTimeout(() => overlay.classList.add('show'), 10);
+
+    overlay.querySelector('#alert-ok').onclick = () => {
+        closeAlert();
+    };
+
+    setTimeout(() => {
+        overlay.classList.add('show');
+        overlay.classList.add('opacity-100');
+        overlay.querySelector('div').classList.remove('scale-95');
+        overlay.querySelector('div').classList.add('scale-100');
+    }, 10);
 }
 
 function closeAlert() {
     const overlay = document.querySelector('.custom-alert-overlay');
     if (overlay) {
         overlay.classList.remove('show');
-        setTimeout(() => overlay.remove(), 300);
+        overlay.classList.remove('opacity-100');
+        const card = overlay.querySelector('div');
+        if (card) {
+            card.classList.remove('scale-100');
+            card.classList.add('scale-95');
+        }
+        setTimeout(() => overlay.remove(), 200);
     }
 }
 
@@ -33,19 +49,30 @@ function showConfirm(message) {
         const existing = document.querySelector('.custom-alert-overlay');
         if (existing) existing.remove();
 
+        const isDelete = message.toLowerCase().includes('delete');
+        const okBtnClass = isDelete 
+            ? 'bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 px-5 rounded-xl transition-all shadow-md hover:shadow-lg focus:outline-none flex-1' 
+            : 'bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-xl transition-all shadow-md hover:shadow-lg focus:outline-none flex-1';
+
         const overlay = document.createElement('div');
-        overlay.className = 'custom-alert-overlay';
+        overlay.className = 'custom-alert-overlay fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[9999] opacity-0 transition-opacity duration-200';
         overlay.innerHTML = `
-            <div class="custom-alert-card">
-                <div class="custom-alert-message">${message}</div>
-                <div style="display: flex; gap: 12px; justify-content: center;">
-                    <button class="custom-alert-btn custom-alert-btn-secondary" id="confirm-cancel">Cancel</button>
-                    <button class="custom-alert-btn" id="confirm-ok">OK</button>
+            <div class="bg-white rounded-2xl p-6 max-w-sm w-[90%] text-center shadow-2xl border border-gray-100 transform scale-95 transition-transform duration-200">
+                <div class="text-gray-800 font-semibold text-base mb-6 leading-relaxed">${message}</div>
+                <div class="flex gap-3 justify-center">
+                    <button class="bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 px-5 rounded-xl transition-all focus:outline-none flex-1" id="confirm-cancel">Cancel</button>
+                    <button class="${okBtnClass}" id="confirm-ok">OK</button>
                 </div>
             </div>
         `;
         document.body.appendChild(overlay);
-        setTimeout(() => overlay.classList.add('show'), 10);
+        
+        setTimeout(() => {
+            overlay.classList.add('show');
+            overlay.classList.add('opacity-100');
+            overlay.querySelector('div').classList.remove('scale-95');
+            overlay.querySelector('div').classList.add('scale-100');
+        }, 10);
 
         const handleEscape = (e) => {
             if (e.key === 'Escape') {
@@ -56,12 +83,12 @@ function showConfirm(message) {
         };
         document.addEventListener('keydown', handleEscape);
 
-        document.getElementById('confirm-ok').onclick = () => {
+        overlay.querySelector('#confirm-ok').onclick = () => {
             document.removeEventListener('keydown', handleEscape);
             resolve(true);
             closeAlert();
         };
-        document.getElementById('confirm-cancel').onclick = () => {
+        overlay.querySelector('#confirm-cancel').onclick = () => {
             document.removeEventListener('keydown', handleEscape);
             resolve(false);
             closeAlert();
@@ -105,6 +132,7 @@ function applyRolePermissions() {
 }
 
 async function showView(viewId) {
+    closeCheckoutModal();
     const contentArea = document.getElementById('content-area');
     const viewTitle = document.getElementById('view-title');
 
@@ -161,11 +189,6 @@ async function showView(viewId) {
             const paymentsHtml = await renderPaymentLogs();
             contentArea.innerHTML = paymentsHtml;
             break;
-        case 'reports':
-            viewTitle.innerText = "Reports";
-            const reportsHtml = await renderReports('Daily');
-            contentArea.innerHTML = reportsHtml;
-            break;
         case 'attendance':
             viewTitle.innerText = "Staff Time";
             const attendanceHtml = await renderAttendance();
@@ -179,255 +202,200 @@ async function renderVisitorLogs(filter = 'All') {
     const response = await fetch('/api/visitors');
     let visitors = await response.json();
 
-    if (filter !== 'All') {
-        visitors = visitors.filter(v => v.status === filter);
+    if (currentUser) {
+        visitors = visitors.filter(v => v.recieved_by === currentUser.username);
     }
 
-    if (visitors.length === 0) return `
-        <div class="table-container" style="text-align: center; padding: 4rem; color: #64748b;">
-            <p>No ${filter.toLowerCase()} visitors found.</p>
-        </div>
-    `;
+    const uniqueResorts = [...new Set(visitors.map(v => v.resort).filter(Boolean))];
 
-    let rows = '';
-    visitors.forEach(v => {
-        const statusClass = v.status === 'Active' ? 'badge-active' : 'badge-out';
+    let rows = visitors.map(v => {
+        const statusClass = v.status === 'Active' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600';
         const membersList = JSON.parse(v.members || '[]');
         const totalPeople = 1 + membersList.length;
 
         let companionsHtml = '';
         if (membersList.length > 0) {
             companionsHtml = `
-                <div id="companions-${v.id}" style="display: none; font-size: 0.75rem; color: #64748b; margin-top: 8px; padding-left: 12px; border-left: 2px solid var(--primary); animation: fadeIn 0.2s ease;">
-                    <div style="font-weight: 700; font-size: 0.65rem; text-transform: uppercase; color: #94a3b8; margin-bottom: 4px; letter-spacing: 0.5px;">Companions:</div>
+                <div id="companions-${v.id}" class="hidden text-xs text-gray-500 mt-2 pl-3 border-l-2 border-emerald-500 animate-[fadeIn_0.2s_ease-out]">
+                    <div class="font-bold text-[0.65rem] uppercase text-gray-500 mb-1 tracking-wide">Companions:</div>
                     ${membersList.map(m => `
-                        <div style="margin-bottom: 3px; display: flex; align-items: center; gap: 6px;">
-                            <span style="color: var(--primary); font-size: 0.4rem;">●</span>
-                            <span style="font-weight: 600; color: #475569;">${m.name}</span>
-                            <span style="color: #94a3b8; font-size: 0.7rem;">(${m.age}) — <span style="color:#6366f1">${m.visitorType}</span></span>
+                        <div class="mb-1 flex items-center gap-1.5">
+                            <span class="text-emerald-500 text-[0.4rem]">●</span>
+                            <span class="font-semibold text-gray-700">${m.name}</span>
+                            <span class="text-gray-500 text-[0.7rem]">(${m.age}) — <span class="text-indigo-500">${m.visitorType || 'N/A'}</span></span>
                         </div>
                     `).join('')}
                 </div>`;
         }
 
-        rows += `
-            <tr>
-                <td style="font-weight: 700; color: #64748b; font-size: 0.75rem;">${v.id}</td>
-                <td>
-                    <div style="font-weight: 700; color: ${membersList.length > 0 ? 'var(--primary)' : 'var(--text-main)'}; cursor: ${membersList.length > 0 ? 'pointer' : 'default'}; display: inline-block; transition: all 0.2s;" 
-                         ${membersList.length > 0 ? `onclick="toggleCompanions('${v.id}')"` : ''}
-                         onmouseover="this.style.textDecoration='underline'; this.style.opacity='0.8'" 
-                         onmouseout="this.style.textDecoration='none'; this.style.opacity='1'">
+        return `
+            <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                data-created-at="${v.created_at}"
+                data-resort="${v.resort}"
+                data-status="${v.status}">
+                <td class="py-4 px-4 font-bold text-gray-500 text-xs">${v.id}</td>
+                <td class="py-4 px-4">
+                    <div class="font-bold ${membersList.length > 0 ? 'text-emerald-600 cursor-pointer hover:underline hover:opacity-80' : 'text-gray-800'} inline-block transition-all" 
+                         ${membersList.length > 0 ? `onclick="toggleCompanions('${v.id}')"` : ''}>
                         ${v.name}
                     </div>
+                    <div class="text-xs text-gray-400">Headcount: ${totalPeople}</div>
                     ${companionsHtml}
                 </td>
-                <td>${v.resort}</td>
-                <td style="text-align: center; font-weight: 600;">${totalPeople}</td>
-                <td><span style="font-weight: 600; color: #059669;">${v.total}</span></td>
-                <td><span class="badge ${statusClass}">${v.status}</span></td>
-                <td style="text-align: center;">
-                    <button class="btn" onclick="viewVisitorDetails('${v.id}')" 
-                        style="padding: 6px; background: #f1f5f9; color: #64748b; border-radius: 8px; border: 1px solid #e2e8f0; cursor: pointer; transition: all 0.2s;"
-                        title="View Details">
-                        <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
+                <td class="py-4 px-4 text-gray-700">${v.resort}</td>
+                <td class="py-4 px-4 font-bold text-emerald-600">${v.total}</td>
+                <td class="py-4 px-4"><span class="px-3 py-1 text-xs font-bold uppercase tracking-wide rounded-full ${statusClass}">${v.status}</span></td>
+                <td class="py-4 px-4 text-gray-500 text-sm">${parseSQLiteDate(v.created_at).toLocaleDateString()}</td>
+                <td class="py-4 px-4 text-center">
+                    <button class="bg-gray-100 hover:bg-gray-200 text-gray-600 p-2 rounded-xl transition-colors inline-flex items-center justify-center" onclick="viewVisitorDetails('${v.id}')" title="View Details">
+                        <i data-lucide="eye" class="w-4 h-4"></i>
                     </button>
                 </td>
             </tr>
         `;
-    });
+    }).join('');
+
+    setTimeout(() => {
+        applyVisitorFilters();
+    }, 20);
 
     return `
-        <div class="table-container fade-in">
-            <div class="table-header">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <span class="badge ${filter === 'All' ? 'badge-active' : 'badge-out'}" onclick="showView('visitors')" style="cursor:pointer">All</span>
-                    <span class="badge ${filter === 'Active' ? 'badge-active' : 'badge-out'}" onclick="showView('visitors-active')" style="cursor:pointer">Active</span>
-                    <span class="badge ${filter === 'Checked Out' ? 'badge-active' : 'badge-out'}" onclick="showView('visitors-out')" style="cursor:pointer">Out</span>
+        <div class="bg-white rounded-xl shadow-lg border border-slate-300 p-6 fade-in">
+            <h2 class="text-xl font-bold text-slate-800 mb-4">Visitor Logs Table</h2>
+            <!-- Filters & Search Bar Row -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 no-print">
+                <!-- Search -->
+                <div class="relative">
+                    <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                    <input type="text" id="visitor-search" placeholder="Search visitors..." oninput="applyVisitorFilters()"
+                        class="w-full py-2.5 pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all font-medium placeholder-slate-400">
                 </div>
-                
-                <div class="search-container">
-                    <i data-lucide="search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; color: #94a3b8;"></i>
-                    <input type="text" placeholder="Search..." oninput="filterTableRows(this.value, 'visitor-table')" 
-                        style="width: 100%; padding: 0.6rem 0.6rem 0.6rem 2.5rem; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 0.85rem; outline: none; transition: all 0.2s; background: #f8fafc;">
-                </div>
-            </div>
-            <div class="table-responsive">
-                <table class="data-table" id="visitor-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>VISITOR NAME</th>
-                            <th>DESTINATION</th>
-                            <th style="text-align: center;">MEMBERS</th>
-                            <th>TOTAL PAID</th>
-                            <th>STATUS</th>
-                            <th style="text-align: center;">ACTIONS</th>
-                        </tr>
-                    </thead>
-                    <tbody>${rows}</tbody>
-                </table>
-            </div>
-        </div>
-    `;
-}
-
-async function renderReports(filter = 'Daily') {
-    const response = await fetch('/api/visitors');
-    let visitors = await response.json();
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    if (filter === 'Daily') {
-        visitors = visitors.filter(v => new Date(v.created_at) >= today);
-    } else if (filter === 'Weekly') {
-        const lastWeek = new Date(today);
-        lastWeek.setDate(lastWeek.getDate() - 7);
-        visitors = visitors.filter(v => new Date(v.created_at) >= lastWeek);
-    } else if (filter === 'Monthly') {
-        visitors = visitors.filter(v => {
-            const vDate = new Date(v.created_at);
-            return vDate.getMonth() === now.getMonth() && vDate.getFullYear() === now.getFullYear();
-        });
-    }
-
-    const dateHeader = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-    let rows = '';
-    let totalRevenue = 0;
-    let totalHeadcount = 0;
-
-    visitors.forEach(v => {
-        const amount = parseFloat(v.total.replace('₱', '').replace(',', ''));
-        totalRevenue += amount;
-        const regDate = new Date(v.created_at).toLocaleDateString();
-        const membersList = JSON.parse(v.members || '[]');
-        const groupSize = 1 + membersList.length;
-        totalHeadcount += groupSize;
-
-        rows += `
-            <tr>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${regDate}</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${v.id}</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">
-                    <div style="font-weight: 700;">${v.name}</div>
-                    <div style="font-size: 0.7rem; color: #64748b;">Companion: ${membersList.map(m => m.name).join(', ') || 'None'}</div>
-                </td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${v.resort}</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: center;">${groupSize}</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: right; font-weight: 700;">${v.total}</td>
-            </tr>
-        `;
-    });
-
-    return `
-        <div class="report-controls no-print" style="margin-bottom: 2rem; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
-            <div style="position: relative; display: flex; align-items: center; gap: 8px; background: white; padding: 5px 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                <i data-lucide="filter" style="width: 16px; color: #64748b;"></i>
-                <select onchange="refreshReport(this.value)" style="border: none; outline: none; background: transparent; font-size: 0.85rem; font-weight: 600; color: #1e293b; cursor: pointer; padding-right: 10px;">
-                    <option value="Daily" ${filter === 'Daily' ? 'selected' : ''}>Today</option>
-                    <option value="Weekly" ${filter === 'Weekly' ? 'selected' : ''}>This Week</option>
-                    <option value="Monthly" ${filter === 'Monthly' ? 'selected' : ''}>This Month</option>
-                    <option value="All" ${filter === 'All' ? 'selected' : ''}>All Time</option>
+                <!-- Status Filter -->
+                <select id="visitor-status-filter" onchange="applyVisitorFilters()"
+                    class="py-2.5 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all font-semibold text-slate-700 cursor-pointer">
+                    <option value="All">All Statuses</option>
+                    <option value="Active" ${filter === 'Active' ? 'selected' : ''}>Active</option>
+                    <option value="Checked Out" ${filter === 'Checked Out' ? 'selected' : ''}>Checked Out</option>
+                </select>
+                <!-- Date Filter -->
+                <select id="visitor-date-filter" onchange="applyVisitorFilters()"
+                    class="py-2.5 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all font-semibold text-slate-700 cursor-pointer">
+                    <option value="All">All Dates</option>
+                    <option value="Daily">Today</option>
+                    <option value="Weekly">This Week</option>
+                    <option value="Monthly">This Month</option>
+                </select>
+                <!-- Resort Filter -->
+                <select id="visitor-resort-filter" onchange="applyVisitorFilters()"
+                    class="py-2.5 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all font-semibold text-slate-700 cursor-pointer">
+                    <option value="All">All Destinations</option>
+                    ${uniqueResorts.map(r => `<option value="${r}">${r}</option>`).join('')}
                 </select>
             </div>
-            <button class="btn btn-primary" onclick="window.print()" title="Print ${filter} Report" style="width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
-                <i data-lucide="printer" style="width: 20px;"></i>
-            </button>
-        </div>
-
-        <div id="printable-report" class="printable-area">
-            <div class="report-header" style="text-align: center; margin-bottom: 3rem;">
-                <img src="../images/logo.png" style="width: 80px; margin-bottom: 1rem;">
-                <h1 style="font-family: 'Montserrat'; font-size: 1.5rem; margin: 0;">Municipality of Tibiao</h1>
-                <h2 style="font-family: 'Montserrat'; font-size: 1.1rem; color: #64748b; margin: 0;">Tourism Management System - ${filter} Report</h2>
-                <div style="margin-top: 1rem; font-size: 0.85rem; color: #94a3b8;">Generated on: ${dateHeader}</div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem;">
-                <div style="background: #f8fafc; padding: 1.5rem; border-radius: 12px; border: 1px solid #e2e8f0;">
-                    <div style="font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Total Registrations</div>
-                    <div style="font-size: 1.5rem; font-weight: 800; color: var(--primary);">${visitors.length}</div>
-                </div>
-                <div style="background: #f8fafc; padding: 1.5rem; border-radius: 12px; border: 1px solid #e2e8f0;">
-                    <div style="font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Total Visitors</div>
-                    <div style="font-size: 1.5rem; font-weight: 800; color: #3b82f6;">${totalHeadcount}</div>
-                </div>
-                <div style="background: #f8fafc; padding: 1.5rem; border-radius: 12px; border: 1px solid #e2e8f0;">
-                    <div style="font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Total Collection Fee</div>
-                    <div style="font-size: 1.5rem; font-weight: 800; color: #10b981;">₱${totalRevenue.toLocaleString()}</div>
-                </div>
-            </div>
-            <div class="table-responsive">
-                <table class="report-table" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse" id="visitor-table">
                     <thead>
-                        <tr style="background: #f1f5f9; text-align: left;">
-                            <th style="padding: 12px; border: 1px solid #e2e8f0;">DATE</th>
-                            <th style="padding: 12px; border: 1px solid #e2e8f0;">REG ID</th>
-                            <th style="padding: 12px; border: 1px solid #e2e8f0;">PRIMARY VISITOR</th>
-                            <th style="padding: 12px; border: 1px solid #e2e8f0;">RESORT</th>
-                            <th style="padding: 12px; border: 1px solid #e2e8f0; text-align: center;">SIZE</th>
-                            <th style="padding: 12px; border: 1px solid #e2e8f0; text-align: right;">AMOUNT</th>
+                        <tr class="border-b border-gray-200">
+                            <th class="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">ID</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Visitor</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Resort</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Paid</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        ${visitors.length > 0 ? rows : '<tr><td colspan="6" style="text-align:center; padding: 2rem; color: #94a3b8;">No records found for this period.</td></tr>'}
-                    </tbody>
+                    <tbody>${rows || '<tr><td colspan="7" class="py-8 text-center text-gray-400 font-medium">No records found.</td></tr>'}</tbody>
                 </table>
             </div>
         </div>
     `;
 }
 
-async function refreshReport(filter) {
-    const contentArea = document.getElementById('content-area');
-    contentArea.innerHTML = `<div style="padding: 2rem; text-align: center;">Updating Report...</div>`;
-    const reportsHtml = await renderReports(filter);
-    contentArea.innerHTML = reportsHtml;
-    lucide.createIcons();
-}
+
 
 async function renderPaymentLogs() {
     const response = await fetch('/api/visitors');
-    const visitors = await response.json();
+    let visitors = await response.json();
 
-    if (visitors.length === 0) return `<div class="table-container" style="text-align: center; padding: 4rem; color: #64748b;">No payment records found.</div>`;
+    if (currentUser) {
+        visitors = visitors.filter(v => v.recieved_by === currentUser.username);
+    }
 
-    let rows = '';
-    visitors.forEach(v => {
-        const date = new Date(v.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        rows += `
-            <tr>
-                <td style="font-weight: 700; color: #64748b; font-size: 0.75rem;">${v.id}</td>
-                <td style="font-weight: 600;">${v.name}</td>
-                <td>${v.resort}</td>
-                <td><span style="color: #64748b;">${date}</span></td>
-                <td><span style="font-weight: 700; color: #059669; font-size: 1.1rem;">${v.total}</span></td>
+    const uniqueResorts = [...new Set(visitors.map(v => v.resort).filter(Boolean))];
+
+    let rows = visitors.map(v => {
+        const pStatus = v.payment_status || 'Paid';
+        const badgeColor = pStatus === 'Paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800';
+        const date = parseSQLiteDate(v.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+        return `
+            <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                data-created-at="${v.created_at}"
+                data-resort="${v.resort}"
+                data-payment-status="${pStatus}">
+                <td class="py-4 px-4 font-bold text-gray-500 text-xs">${v.id}</td>
+                <td class="py-4 px-4 font-semibold text-gray-800">${v.name}</td>
+                <td class="py-4 px-4 text-gray-700">${v.resort}</td>
+                <td class="py-4 px-4"><span class="text-gray-500">${date}</span></td>
+                <td class="py-4 px-4 font-bold text-emerald-600">${v.total}</td>
+                <td class="py-4 px-4"><span class="px-3 py-1 text-xs font-bold uppercase tracking-wide rounded-full ${badgeColor}">${pStatus}</span></td>
             </tr>
         `;
-    });
+    }).join('');
+
+    setTimeout(() => {
+        applyPaymentFilters();
+    }, 20);
 
     return `
-        <div class="table-container fade-in">
-            <div class="table-header">
-                <h3 style="font-family: 'Montserrat'; font-size: 1.1rem; margin: 0;">Transaction History</h3>
-                <div class="search-container">
-                    <i data-lucide="search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; color: #94a3b8;"></i>
-                    <input type="text" placeholder="Search..." oninput="filterTableRows(this.value, 'payment-table')" 
-                        style="width: 100%; padding: 0.5rem 0.5rem 0.5rem 2.5rem; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 0.85rem; outline: none; transition: all 0.2s; background: #f8fafc;">
+        <div class="bg-white rounded-xl shadow-lg border border-slate-300 p-6 fade-in">
+            <h2 class="text-xl font-bold text-slate-800 mb-4">Payments Table</h2>
+            <!-- Filters & Search Bar Row -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 no-print">
+                <!-- Search -->
+                <div class="relative">
+                    <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                    <input type="text" id="payment-search" placeholder="Search payors..." oninput="applyPaymentFilters()"
+                        class="w-full py-2.5 pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all font-medium placeholder-slate-400">
                 </div>
+                <!-- Status Filter -->
+                <select id="payment-status-filter" onchange="applyPaymentFilters()"
+                    class="py-2.5 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all font-semibold text-slate-700 cursor-pointer">
+                    <option value="All">All Statuses</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Pending">Pending</option>
+                </select>
+                <!-- Date Filter -->
+                <select id="payment-date-filter" onchange="applyPaymentFilters()"
+                    class="py-2.5 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all font-semibold text-slate-700 cursor-pointer">
+                    <option value="All">All Dates</option>
+                    <option value="Daily">Today</option>
+                    <option value="Weekly">This Week</option>
+                    <option value="Monthly">This Month</option>
+                </select>
+                <!-- Resort Filter -->
+                <select id="payment-resort-filter" onchange="applyPaymentFilters()"
+                    class="py-2.5 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all font-semibold text-slate-700 cursor-pointer">
+                    <option value="All">All Destinations</option>
+                    ${uniqueResorts.map(r => `<option value="${r}">${r}</option>`).join('')}
+                </select>
             </div>
-            <div class="table-responsive">
-                <table class="data-table" id="payment-table">
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse" id="payment-table">
                     <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>PAYOR NAME</th>
-                            <th>DESTINATION</th>
-                            <th>DATE</th>
-                            <th>AMOUNT PAID</th>
+                        <tr class="border-b border-gray-200">
+                            <th class="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">ID</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Payor Name</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Destination</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Amount Paid</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                         </tr>
                     </thead>
-                    <tbody>${rows}</tbody>
+                    <tbody>${rows || '<tr><td colspan="6" class="py-8 text-center text-gray-400 font-medium">No records found.</td></tr>'}</tbody>
                 </table>
             </div>
         </div>
@@ -436,9 +404,9 @@ async function renderPaymentLogs() {
 
 function renderRevenueGraph() {
     return `
-        <div class="table-container fade-in">
-            <h3 style="font-family: 'Montserrat'; margin-bottom: 2rem;">Collection Fee Overview (Daily Trend)</h3>
-            <div style="height: 400px;">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-6 fade-in">
+            <h3 class="font-display font-black text-xl text-gray-800 mb-6">Collection Fee Overview (Daily Trend)</h3>
+            <div class="h-[400px]">
                 <canvas id="revenueChart"></canvas>
             </div>
         </div>
@@ -447,11 +415,15 @@ function renderRevenueGraph() {
 
 async function initRevenueChart() {
     const response = await fetch('/api/visitors');
-    const visitors = await response.json();
+    let visitors = await response.json();
+
+    if (currentUser) {
+        visitors = visitors.filter(v => v.recieved_by === currentUser.username);
+    }
 
     const resortData = {};
     visitors.forEach(v => {
-        const amount = parseFloat(v.total.replace('₱', '').replace(',', ''));
+        const amount = v.total ? (parseFloat(v.total.replace(/[^0-9.-]/g, '')) || 0) : 0;
         resortData[v.resort] = (resortData[v.resort] || 0) + amount;
     });
 
@@ -490,7 +462,9 @@ function updateDate() {
     }
 }
 
-function logout() {
+async function logout() {
+    const confirm = await showConfirm("Are you sure you want to logout?");
+    if (!confirm) return;
     localStorage.removeItem('currentUser');
     window.location.href = 'login.html';
 }
@@ -517,54 +491,118 @@ async function viewVisitorDetails(id) {
 
         const membersList = JSON.parse(v.members || '[]');
         const detailsHtml = `
-            <div class="custom-alert-overlay show" id="details-overlay">
-                <div class="custom-alert-card" style="max-width: 500px; text-align: left; padding: 2.5rem;">
-                    <h3 style="margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; font-family: 'Montserrat'; font-weight: 800; font-size: 1.25rem;">
-                        Visitor Profile
-                        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">Ref: ${v.id}</span>
-                    </h3>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
-                        <div>
-                            <label style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Primary Visitor</label>
-                            <div style="font-weight: 700; color: var(--text-main); font-size: 1.1rem;">${v.name}</div>
-                        </div>
-                        <div>
-                            <label style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Destination</label>
-                            <div style="font-weight: 700; color: var(--text-main); font-size: 1.1rem;">${v.resort}</div>
-                        </div>
-                        <div>
-                            <label style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Total Paid</label>
-                            <div style="font-weight: 800; color: var(--success); font-size: 1.25rem;">${v.total}</div>
-                        </div>
-                        <div>
-                            <label style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Visit Date</label>
-                            <div style="font-weight: 600; color: var(--text-main);">${new Date(v.created_at).toLocaleDateString()}</div>
-                        </div>
+            <div class="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease-out]" id="details-overlay">
+                <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-[slideUp_0.3s_ease-out]">
+                    <!-- Header -->
+                    <div class="p-6 md:p-8 pb-4 border-b border-gray-100 flex justify-between items-center shrink-0">
+                        <h3 class="font-display font-black text-xl text-gray-800 m-0 tracking-tight">Visitor Profile</h3>
+                        <span class="text-xs font-bold text-gray-400 bg-gray-100 px-3 py-1 rounded-full uppercase tracking-wider">Ref: ${v.id}</span>
                     </div>
-                    <label style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800; letter-spacing: 1px; margin-bottom: 0.75rem; display: block;">Companions (${membersList.length})</label>
-                    <div style="background: rgba(255,255,255,0.03); padding: 1rem; border-radius: 16px; margin-bottom: 2rem; max-height: 180px; overflow-y: auto; border: 1px solid var(--border-color);">
-                        ${membersList.length > 0 ? membersList.map(m => `
-                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding: 8px 0; align-items: center;">
-                                <span style="font-size:0.9rem; font-weight: 600; color: var(--text-main);">${m.name}</span>
-                                <span style="font-size:0.75rem; color:var(--text-muted); background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 6px;">${m.age} • ${m.visitorType}</span>
+                    
+                    <!-- Scrollable Body -->
+                    <div class="p-6 md:p-8 py-4 overflow-y-auto flex-1">
+                        <div class="flex flex-col md:flex-row gap-8">
+                            <!-- Left: Details -->
+                            <div class="flex-1 space-y-6">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                                    <div>
+                                        <label class="block text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest mb-1">Primary Visitor</label>
+                                        <div class="font-bold text-base text-gray-800">${v.name}</div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest mb-1">Age / Gender</label>
+                                        <div class="font-bold text-gray-800">${v.age || 'N/A'} • ${v.gender || 'N/A'}</div>
+                                    </div>
+                                    <div class="sm:col-span-2">
+                                        <label class="block text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest mb-1">Address</label>
+                                        <div class="font-bold text-gray-800">${v.address || 'N/A'}</div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest mb-1">Visitor Type</label>
+                                        <div class="font-bold text-gray-800">${v.visitor_type || v.visitorType || 'N/A'}</div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest mb-1">Destination</label>
+                                        <div class="font-bold text-base text-gray-800">${v.resort}</div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest mb-1">Stay Duration</label>
+                                        <div class="font-bold text-gray-800">${v.duration || 'N/A'}</div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest mb-1">Total Paid</label>
+                                        <div class="font-black text-lg text-emerald-500">${v.total}</div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest mb-1">Payment Status</label>
+                                        <div class="font-bold text-gray-800">
+                                            <span class="px-2.5 py-0.5 text-xs font-extrabold uppercase rounded-full ${v.payment_status === 'Paid' || v.paymentStatus === 'Paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">
+                                                ${v.payment_status || v.paymentStatus || 'Paid'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="sm:col-span-2">
+                                        <label class="block text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest mb-1">Visit Date</label>
+                                        <div class="font-bold text-gray-800">${parseSQLiteDate(v.created_at).toLocaleDateString()}</div>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest mb-2">Companions (${membersList.length})</label>
+                                    <div class="bg-gray-50 rounded-xl p-3 border border-gray-100 max-h-48 overflow-y-auto">
+                                        ${membersList.length > 0 ? `
+                                            <table class="w-full text-left text-xs border-collapse">
+                                                <thead>
+                                                    <tr class="border-b border-gray-200 text-[0.65rem] text-gray-400 font-bold uppercase tracking-wider">
+                                                        <th class="pb-2 font-semibold">Name</th>
+                                                        <th class="pb-2 font-semibold text-center">Age</th>
+                                                        <th class="pb-2 font-semibold text-center">Status</th>
+                                                        <th class="pb-2 font-semibold text-right">Visitor Type</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-gray-100">
+                                                    ${membersList.map(m => `
+                                                        <tr class="text-gray-700">
+                                                            <td class="py-2.5 font-bold text-gray-800">${m.name}</td>
+                                                            <td class="py-2.5 text-center font-medium">${m.age}</td>
+                                                            <td class="py-2.5 text-center font-medium"><span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold uppercase">${m.status_display || m.status || 'Regular'}</span></td>
+                                                            <td class="py-2.5 text-right font-medium text-indigo-600">${m.visitorType || m.visitor_type || 'N/A'}</td>
+                                                        </tr>
+                                                    `).join('')}
+                                                </tbody>
+                                            </table>
+                                        ` : '<div class="text-xs font-medium text-gray-400 text-center py-2">No companions registered.</div>'}
+                                    </div>
+                                </div>
                             </div>
-                        `).join('') : '<div style="color:var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1rem;">No companions registered.</div>'}
-                    </div>
-                    <div style="margin-bottom: 2.5rem;">
-                        <label style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800; letter-spacing: 1px; margin-bottom: 0.75rem; display: block;">Update Visit Status</label>
-                        <div style="display: flex; gap: 12px;">
-                            <button onclick="updateVisitorStatus('${v.id}', 'Active')" 
-                                style="flex: 1; padding: 1rem; border-radius: 14px; border: 2px solid ${v.status === 'Active' ? 'var(--success)' : 'var(--border-color)'}; background: ${v.status === 'Active' ? 'rgba(16, 185, 129, 0.1)' : 'transparent'}; color: ${v.status === 'Active' ? 'var(--success)' : 'var(--text-muted)'}; cursor: pointer; font-weight: 800; font-size: 0.8rem; transition: all 0.2s;">
-                                ACTIVE
-                            </button>
-                            <button onclick="updateVisitorStatus('${v.id}', 'Checked Out')" 
-                                style="flex: 1; padding: 1rem; border-radius: 14px; border: 2px solid ${v.status === 'Checked Out' ? 'var(--danger)' : 'var(--border-color)'}; background: ${v.status === 'Checked Out' ? 'rgba(239, 68, 68, 0.1)' : 'transparent'}; color: ${v.status === 'Checked Out' ? 'var(--danger)' : 'var(--text-muted)'}; cursor: pointer; font-weight: 800; font-size: 0.8rem; transition: all 0.2s;">
-                                CHECKED OUT
-                            </button>
+                            
+                            <!-- Right: QR Code -->
+                            <div class="w-full md:w-52 flex flex-col items-center justify-center border-t md:border-t-0 md:border-l border-gray-100 pt-6 md:pt-0 md:pl-8 shrink-0">
+                                <div class="text-[0.65rem] font-black text-gray-400 uppercase tracking-widest mb-4">Registration QR</div>
+                                <div id="modal-qrcode" class="p-3 bg-white rounded-2xl border border-gray-100 shadow-md shadow-gray-200/50 flex items-center justify-center mb-3"></div>
+                                <div class="font-mono text-xs font-extrabold text-gray-600 tracking-wider">${v.id}</div>
+                            </div>
                         </div>
                     </div>
-                    <div style="display: flex; justify-content: center;">
-                        <button class="custom-alert-btn custom-alert-btn-secondary" style="width: 100%;" onclick="document.getElementById('details-overlay').remove()">Close Profile</button>
+                    
+                    <!-- Footer / Actions -->
+                    <div class="p-6 md:p-8 pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-stretch sm:items-end gap-4 shrink-0">
+                        <div class="w-full sm:flex-1">
+                            <label class="block text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest mb-2 text-center sm:text-left">Update Visit Status</label>
+                            <div class="flex gap-2">
+                                <button onclick="updateVisitorStatus('${v.id}', 'Active')" 
+                                    class="flex-1 py-2.5 px-2 rounded-xl font-black text-[0.7rem] uppercase tracking-wider transition-all duration-200 border-2 ${v.status === 'Active' ? 'border-emerald-500 bg-emerald-50 text-emerald-600 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'border-gray-100 bg-white text-gray-400 hover:border-gray-200 hover:text-gray-600'}">
+                                    Active
+                                </button>
+                                <button onclick="updateVisitorStatus('${v.id}', 'Checked Out')" 
+                                    class="flex-1 py-2.5 px-2 rounded-xl font-black text-[0.7rem] uppercase tracking-wider transition-all duration-200 border-2 ${v.status === 'Checked Out' ? 'border-amber-500 bg-amber-50 text-amber-600 shadow-[0_0_15px_rgba(245,158,11,0.15)]' : 'border-gray-100 bg-white text-gray-400 hover:border-gray-200 hover:text-gray-600'}">
+                                    Checked Out
+                                </button>
+                            </div>
+                        </div>
+                        <button class="w-full sm:w-auto sm:px-8 py-3.5 rounded-xl font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors shrink-0" onclick="document.getElementById('details-overlay').remove()">
+                            Close Profile
+                        </button>
                     </div>
                 </div>
             </div>
@@ -572,6 +610,20 @@ async function viewVisitorDetails(id) {
         const existing = document.getElementById('details-overlay');
         if (existing) existing.remove();
         document.body.insertAdjacentHTML('beforeend', detailsHtml);
+
+        // Generate the QR Code dynamically in the modal
+        const qrContainer = document.getElementById('modal-qrcode');
+        if (qrContainer) {
+            new QRCode(qrContainer, {
+                text: v.id,
+                width: 120,
+                height: 120,
+                colorDark: "#064e3b",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        }
+
         if (window.lucide) lucide.createIcons();
     } catch (err) {
         alert('Failed to load visitor details.');
@@ -615,55 +667,115 @@ async function renderAttendance() {
     const statusColor = currentStatus.status === 'IN' ? '#10b981' : (currentStatus.status === 'BREAK' ? '#f59e0b' : '#ef4444');
     const statusText = currentStatus.status === 'IN' ? 'Time In (On Duty)' : (currentStatus.status === 'BREAK' ? 'On Break' : 'Time Out');
 
-    let logRows = '';
-    logs.slice(0, 10).forEach(log => {
-        const date = new Date(log.time_in).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        const timeIn = new Date(log.time_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const timeOut = log.time_out ? new Date(log.time_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '---';
-        let approvalBadge = `<span class="badge ${log.approval_status === 'Approved' ? 'badge-active' : (log.approval_status === 'Disapproved' ? 'badge-failed' : 'badge-pending')}">${log.approval_status}</span>`;
-        logRows += `
-            <tr>
-                <td style="padding: 1.25rem 1rem; font-weight: 500; color: #64748b;">${date}</td>
-                <td style="padding: 1.25rem 1rem; color: #10b981; font-weight: 700;">${timeIn}</td>
-                <td style="padding: 1.25rem 1rem; color: #ef4444; font-weight: 700;">${timeOut}</td>
-                <td style="padding: 1.25rem 1rem;">${approvalBadge}</td>
-                <td style="padding: 1.25rem 1rem; font-size: 0.85rem; color: #64748b;">${log.remarks || '---'}</td>
+    let logRows = logs.map(log => {
+        const date = parseSQLiteDate(log.time_in).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const timeIn = parseSQLiteDate(log.time_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const timeOut = log.time_out ? parseSQLiteDate(log.time_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '<span class="text-red-500 font-black animate-pulse">ON DUTY</span>';
+
+        let dutyStatus = '';
+        if (log.status === 'IN') {
+            dutyStatus = '<span class="px-3 py-1 text-xs font-bold uppercase tracking-wide rounded-full bg-emerald-100 text-emerald-800">Active</span>';
+        } else if (log.status === 'BREAK') {
+            dutyStatus = '<span class="px-3 py-1 text-xs font-bold uppercase tracking-wide rounded-full bg-amber-100 text-amber-800">On Break</span>';
+        } else {
+            dutyStatus = '<span class="px-3 py-1 text-xs font-bold uppercase tracking-wide rounded-full bg-slate-100 text-slate-600">Timed Out</span>';
+        }
+
+        return `
+            <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                data-time-in="${log.time_in}"
+                data-status="${log.status}">
+                <td class="py-4 px-4 font-bold text-gray-500 text-xs">${date}</td>
+                <td class="py-4 px-4 font-bold text-emerald-500">${timeIn}</td>
+                <td class="py-4 px-4 font-semibold text-gray-800">${timeOut}</td>
+                <td class="py-4 px-4">${dutyStatus}</td>
+                <td class="py-4 px-4 text-sm text-gray-500 max-w-xs truncate">${log.remarks || '<em class="text-gray-300">No remarks</em>'}</td>
+                <td class="py-4 px-4 text-center no-print">
+                    <button class="bg-red-500 hover:bg-red-600 text-white p-2 rounded-xl transition-colors inline-flex items-center justify-center" onclick="deleteAttendanceLog('${log.id}')" title="Delete Record">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </td>
             </tr>
         `;
-    });
+    }).join('');
+
+    setTimeout(() => {
+        applyAttendanceFilters();
+    }, 20);
 
     const html = `
-        <div class="fade-in" style="max-width: 900px; margin: 0 auto;">
-            <div style="background: white; border-radius: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05); overflow: hidden; margin-bottom: 2.5rem; border: 1px solid #e2e8f0;">
-                <div style="padding: 1.5rem 2.5rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <div style="width: 10px; height: 10px; border-radius: 50%; background: ${statusColor};"></div>
-                        <span style="font-weight: 800; color: #475569; font-size: 0.85rem; text-transform: uppercase;">Current: ${statusText}</span>
+        <div class="fade-in">
+            <div class="bg-white rounded-xl shadow-lg border border-slate-300 overflow-hidden mb-10">
+                <div class="p-6 md:px-10 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <div class="w-3 h-3 rounded-full animate-pulse" style="background: ${statusColor};"></div>
+                        <span class="font-bold text-gray-600 text-sm uppercase tracking-wide">Current: ${statusText}</span>
                     </div>
-                    <div id="live-timer" style="font-family: 'Montserrat'; font-weight: 900; font-size: 1.5rem; color: #1e293b;">00:00:00</div>
+                    <div id="live-timer" class="font-display font-black text-2xl text-gray-800 tracking-tight">00:00:00</div>
                 </div>
-                <div style="padding: 2.5rem;">
-                    <div style="display: grid; grid-template-columns: ${isTimedIn ? '1fr 1fr' : '1fr'}; gap: 1rem; margin-bottom: 1.5rem;">
+                <div class="p-6 md:p-10">
+                    <div class="grid grid-cols-1 ${isTimedIn ? 'md:grid-cols-2' : ''} gap-4 mb-6">
                         ${!isTimedIn ? `
-                            <button class="btn btn-primary" onclick="timeIn()" style="padding: 1.5rem; border-radius: 16px; font-weight: 800;">Time In</button>
+                            <button class="bg-primary hover:bg-primary-dark text-white p-4 rounded-lg font-black text-lg transition-colors shadow-sm" onclick="timeIn()">Time In</button>
                         ` : `
-                            <button class="btn" onclick="toggleBreak()" style="padding: 1.5rem; border-radius: 16px; font-weight: 800; background: ${isOnBreak ? '#10b981' : '#f59e0b'}; color: white;">${isOnBreak ? 'Resume' : 'Break'}</button>
-                            <button class="btn btn-danger" onclick="timeOut()" style="padding: 1.5rem; border-radius: 16px; font-weight: 800;">Time Out</button>
+                            <button class="text-white p-4 rounded-lg font-black text-lg transition-colors shadow-sm" style="background: ${isOnBreak ? '#10b981' : '#f59e0b'};" onclick="toggleBreak()">${isOnBreak ? 'Resume' : 'Break'}</button>
+                            <button class="bg-red-500 hover:bg-red-600 text-white p-4 rounded-lg font-black text-lg transition-colors shadow-sm" onclick="timeOut()">Time Out</button>
                         `}
                     </div>
-                    <textarea id="attendance-remarks" placeholder="Add notes..." style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 10px; min-height: 80px;"></textarea>
+                    <textarea id="attendance-remarks" placeholder="Add notes..." class="w-full p-4 border border-gray-200 rounded-lg min-h-[100px] text-sm outline-none transition-all focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 bg-gray-50"></textarea>
                 </div>
             </div>
-            <div class="table-container fade-in" style="background: white; border-radius: 24px; padding: 2rem; border: 1px solid #e2e8f0;">
-                <h3 style="font-family: 'Montserrat'; font-weight: 800; font-size: 1.15rem; color: #1e293b; margin-bottom: 1.5rem;">Recent Logs</h3>
-                <div class="table-responsive">
-                    <table class="data-table" style="width: 100%; border-collapse: separate; border-spacing: 0;">
+            <div class="bg-white rounded-xl shadow-lg border border-slate-300 p-6 md:p-8 fade-in">
+                <h2 class="text-xl font-bold text-slate-800 mb-4">Staff Time Logs Table</h2>
+                <!-- Actions Row (HIDDEN ON PRINT) -->
+                <div class="flex justify-end gap-3 mb-6 no-print">
+                    <button onclick="window.print()" class="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-bold py-2.5 px-4 rounded-xl border border-slate-200 shadow-sm transition-all text-xs uppercase tracking-wider">
+                        <i data-lucide="printer" class="w-4 h-4 text-slate-500"></i> Print
+                    </button>
+                    <button onclick="exportTableToCSV('attendance-table', 'attendance_logs.csv')" class="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-bold py-2.5 px-4 rounded-xl border border-slate-200 shadow-sm transition-all text-xs uppercase tracking-wider">
+                        <i data-lucide="download" class="w-4 h-4 text-slate-500"></i> Export
+                    </button>
+                </div>
+
+                <!-- Filters & Search Bar Row -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 no-print">
+                    <!-- Search -->
+                    <div class="relative">
+                        <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                        <input type="text" id="attendance-search" placeholder="Search logs..." oninput="applyAttendanceFilters()"
+                            class="w-full py-2.5 pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all font-medium placeholder-slate-400">
+                    </div>
+                    <!-- Status Filter -->
+                    <select id="attendance-status-filter" onchange="applyAttendanceFilters()"
+                        class="py-2.5 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all font-semibold text-slate-700 cursor-pointer">
+                        <option value="All">All Statuses</option>
+                        <option value="IN">Active (On Duty)</option>
+                        <option value="BREAK">On Break</option>
+                        <option value="OUT">Timed Out</option>
+                    </select>
+                    <!-- Date Filter -->
+                    <select id="attendance-date-filter" onchange="applyAttendanceFilters()"
+                        class="py-2.5 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all font-semibold text-slate-700 cursor-pointer">
+                        <option value="All">All Dates</option>
+                        <option value="Daily">Today</option>
+                        <option value="Weekly">This Week</option>
+                        <option value="Monthly">This Month</option>
+                    </select>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse" id="attendance-table">
                         <thead>
-                            <tr>
-                                <th>Date</th><th>Shift Start</th><th>Shift End</th><th>Approval</th><th>Remarks</th>
+                            <tr class="border-b border-gray-200">
+                                <th class="py-4 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                                <th class="py-4 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Shift Start</th>
+                                <th class="py-4 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Shift End</th>
+                                <th class="py-4 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="py-4 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Remarks</th>
+                                <th class="py-4 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center no-print">Actions</th>
                             </tr>
                         </thead>
-                        <tbody>${logRows || '<tr><td colspan="5" style="text-align:center; padding: 2rem;">No logs found.</td></tr>'}</tbody>
+                        <tbody>${logRows || '<tr><td colspan="6" class="py-12 text-center text-gray-400 font-medium">No logs found.</td></tr>'}</tbody>
                     </table>
                 </div>
             </div>
@@ -678,6 +790,10 @@ async function renderAttendance() {
 
 function parseSQLiteDate(sqliteDate) {
     if (!sqliteDate) return null;
+    if (typeof sqliteDate !== 'string') return new Date(sqliteDate);
+    if (sqliteDate.includes('T') || sqliteDate.includes('Z')) {
+        return new Date(sqliteDate);
+    }
     const isoStr = sqliteDate.replace(' ', 'T') + 'Z';
     const date = new Date(isoStr);
     return isNaN(date.getTime()) ? null : date;
@@ -747,67 +863,407 @@ function filterTableRows(query, tableId) {
     });
 }
 
-function renderDashboard() {
-    return `
-        <div class="stat-grid fade-in">
-            <div class="stat-card" onclick="showView('visitors')">
-                <div class="stat-header">
-                    <i data-lucide="users" style="color: var(--primary);"></i>
-                    <span class="stat-label">Total Visitors</span>
-                </div>
-                <div id="stat-total-visitors" class="stat-value">---</div>
-            </div>
-            <div class="stat-card" onclick="showView('visitors-active')">
-                <div class="stat-header">
-                    <i data-lucide="user-check" style="color: var(--success);"></i>
-                    <span class="stat-label">Currently Active</span>
-                </div>
-                <div id="stat-active-visitors" class="stat-value">---</div>
-            </div>
-            <div class="stat-card" onclick="showView('revenue')">
-                <div class="stat-header">
-                    <i data-lucide="banknote" style="color: var(--warning);"></i>
-                    <span class="stat-label">Total Collection</span>
-                </div>
-                <div id="stat-revenue" class="stat-value">---</div>
-            </div>
-        </div>
-        <div class="table-container fade-in" style="margin-top: 2rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <h3 style="font-family: 'Montserrat'; font-weight: 800; font-size: 1rem; margin: 0;">Recent Registrations</h3>
-                <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="showView('visitors')">View All</button>
-            </div>
-            <div class="table-responsive">
-                <table class="data-table" id="recent-table">
-                    <thead><tr><th>ID</th><th>Visitor</th><th>Resort</th><th>Date</th></tr></thead>
-                    <tbody id="recent-visitor-rows"></tbody>
-                </table>
-            </div>
-        </div>
-    `;
+// --- QUICK CHECKOUT SCANNER & MANUAL INTERFACE ---
+let checkoutScanner = null;
+
+function openCheckoutModal() {
+    const modal = document.getElementById('checkout-modal');
+    if (!modal) return;
+    modal.classList.remove('opacity-0', 'pointer-events-none');
+    const modalContainer = modal.querySelector('.transform');
+    if (modalContainer) {
+        modalContainer.classList.remove('scale-95');
+        modalContainer.classList.add('scale-100');
+    }
+    initCheckoutView();
+    if (window.lucide) lucide.createIcons();
 }
 
-async function initDashboardCharts() {
-    const response = await fetch('/api/visitors');
-    const visitors = await response.json();
+function closeCheckoutModal() {
+    const modal = document.getElementById('checkout-modal');
+    if (!modal) return;
+    modal.classList.add('opacity-0', 'pointer-events-none');
+    const modalContainer = modal.querySelector('.transform');
+    if (modalContainer) {
+        modalContainer.classList.remove('scale-100');
+        modalContainer.classList.add('scale-95');
+    }
+    stopCheckoutScanner();
+}
+
+function initCheckoutView() {
+    if (window.lucide) lucide.createIcons();
+    stopCheckoutScanner();
+}
+
+function startCheckoutScanner() {
+    const readerEl = document.getElementById('checkout-reader');
+    if (!readerEl) return;
+
+    const placeholderEl = document.getElementById('scanner-placeholder');
+    if (placeholderEl) placeholderEl.style.display = 'none';
+
+    const activeGuideEl = document.getElementById('scanner-active-guide');
+    if (activeGuideEl) activeGuideEl.classList.remove('hidden');
+
+    const startBtn = document.getElementById('btn-start-scanner');
+    const stopBtn = document.getElementById('btn-stop-scanner');
+    if (startBtn) startBtn.style.display = 'none';
+    if (stopBtn) stopBtn.style.display = 'inline-flex';
+
+    checkoutScanner = new Html5Qrcode("checkout-reader");
+    const config = { fps: 15 };
     
-    document.getElementById('stat-total-visitors').innerText = visitors.length;
-    document.getElementById('stat-active-visitors').innerText = visitors.filter(v => v.status === 'Active').length;
+    const successCallback = (decodedText) => {
+        performCheckout(decodedText);
+        stopCheckoutScanner();
+    };
+
+    checkoutScanner.start({ facingMode: "environment" }, config, successCallback)
+        .catch(err => {
+            console.warn("Environment camera failed, trying user camera...", err);
+            checkoutScanner.start({ facingMode: "user" }, config, successCallback)
+                .catch(err2 => {
+                    console.error("Camera start failure:", err2);
+                    showCheckoutResult('error', 'Camera access denied or device has no camera.');
+                    stopCheckoutScanner();
+                });
+        });
+}
+
+function stopCheckoutScanner() {
+    const startBtn = document.getElementById('btn-start-scanner');
+    const stopBtn = document.getElementById('btn-stop-scanner');
+    if (startBtn) startBtn.style.display = 'inline-flex';
+    if (stopBtn) stopBtn.style.display = 'none';
+
+    const placeholderEl = document.getElementById('scanner-placeholder');
+    if (placeholderEl) placeholderEl.style.display = 'flex';
+
+    const activeGuideEl = document.getElementById('scanner-active-guide');
+    if (activeGuideEl) activeGuideEl.classList.add('hidden');
+
+    if (checkoutScanner && checkoutScanner.isScanning) {
+        checkoutScanner.stop().then(() => {
+            checkoutScanner.clear();
+        }).catch(err => console.error("Failed to stop scanner:", err));
+    }
+}
+
+function processManualCheckout() {
+    const inputEl = document.getElementById('manual-checkout-id');
+    if (!inputEl) return;
+    const rawId = inputEl.value.trim().toUpperCase();
+    if (!rawId) return;
+
+    performCheckout(rawId);
+    inputEl.value = '';
+}
+
+async function performCheckout(id) {
+    showCheckoutResult('pending', `Checking out ID ${id}...`);
     
-    let total = 0;
-    visitors.forEach(v => {
-        total += parseFloat(v.total.replace('₱', '').replace(',', '')) || 0;
+    const triggerToast = (msg, type) => {
+        if (typeof showToast === 'function') {
+            showToast(msg, type);
+        } else {
+            console.log(`[Toast] ${type}: ${msg}`);
+        }
+    };
+
+    if (!navigator.onLine) {
+        queueOfflineCheckout(id, triggerToast);
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id })
+        });
+
+        if (response.ok) {
+            showCheckoutResult('success', `Successfully checked out: <strong>${id}</strong>`);
+            triggerToast('Visitor checked out successfully!', 'success');
+        } else if (response.status === 404) {
+            showCheckoutResult('warning', `Visitor <strong>${id}</strong> not found or already checked out.`);
+        } else {
+            const err = await response.json();
+            showCheckoutResult('error', `Failed to checkout: ${err.error || 'Server error'}`);
+        }
+    } catch (err) {
+        console.error("Network checkout error:", err);
+        queueOfflineCheckout(id, triggerToast);
+    }
+}
+
+function queueOfflineCheckout(id, triggerToast) {
+    let checkouts = JSON.parse(localStorage.getItem('offline_checkout_queue') || '[]');
+    if (!checkouts.includes(id)) {
+        checkouts.push(id);
+        localStorage.setItem('offline_checkout_queue', JSON.stringify(checkouts));
+    }
+    showCheckoutResult('offline', `Offline. Queued checkout locally for ID: <strong>${id}</strong>`);
+    triggerToast('Offline. Checkout queued locally.', 'warning');
+}
+
+function showCheckoutResult(type, message) {
+    const container = document.getElementById('checkout-result-container');
+    if (!container) return;
+
+    let content = '';
+    if (type === 'pending') {
+        content = `
+            <div class="text-indigo-500 animate-pulse flex flex-col items-center">
+                <i data-lucide="loader" class="w-12 h-12 animate-spin mb-3"></i>
+                <p class="text-xs font-bold">${message}</p>
+            </div>
+        `;
+    } else if (type === 'success') {
+        content = `
+            <div class="text-emerald-600 animate-[fadeIn_0.3s_ease-out] flex flex-col items-center">
+                <div class="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mb-3 border border-emerald-100 shadow-sm">
+                    <i data-lucide="check" class="w-6 h-6 text-emerald-600"></i>
+                </div>
+                <h4 class="font-display font-black text-sm uppercase tracking-wider mb-1">Checkout Success</h4>
+                <p class="text-xs text-gray-500">${message}</p>
+            </div>
+        `;
+    } else if (type === 'warning') {
+        content = `
+            <div class="text-amber-600 animate-[fadeIn_0.3s_ease-out] flex flex-col items-center">
+                <div class="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center mb-3 border border-amber-100 shadow-sm">
+                    <i data-lucide="alert-triangle" class="w-6 h-6 text-amber-600"></i>
+                </div>
+                <h4 class="font-display font-black text-sm uppercase tracking-wider mb-1">Status Conflict</h4>
+                <p class="text-xs text-gray-500">${message}</p>
+            </div>
+        `;
+    } else if (type === 'offline') {
+        content = `
+            <div class="text-indigo-600 animate-[fadeIn_0.3s_ease-out] flex flex-col items-center">
+                <div class="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mb-3 border border-indigo-100 shadow-sm">
+                    <i data-lucide="wifi-off" class="w-6 h-6 text-indigo-600"></i>
+                </div>
+                <h4 class="font-display font-black text-sm uppercase tracking-wider mb-1">Saved Locally</h4>
+                <p class="text-xs text-gray-500">${message}</p>
+            </div>
+        `;
+    } else {
+        content = `
+            <div class="text-rose-600 animate-[fadeIn_0.3s_ease-out] flex flex-col items-center">
+                <div class="w-14 h-14 bg-rose-50 rounded-2xl flex items-center justify-center mb-3 border border-rose-100 shadow-sm">
+                    <i data-lucide="x" class="w-6 h-6 text-rose-600"></i>
+                </div>
+                <h4 class="font-display font-black text-sm uppercase tracking-wider mb-1">Checkout Failed</h4>
+                <p class="text-xs text-gray-500">${message}</p>
+            </div>
+        `;
+    }
+
+    container.innerHTML = content;
+    if (window.lucide) lucide.createIcons();
+    setTimeout(() => {
+        container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 50);
+}
+
+
+function exportTableToCSV(tableId, filename) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+
+    let csv = [];
+    const headers = Array.from(table.querySelectorAll('thead th'))
+        .map(th => {
+            let text = th.innerText.replace(/[\n\t]/g, ' ').trim();
+            if (text.toLowerCase() === 'actions') return null;
+            return `"${text.replace(/"/g, '""')}"`;
+        }).filter(h => h !== null);
+    csv.push(headers.join(','));
+
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        if (row.style.display !== 'none') {
+            const cols = Array.from(row.querySelectorAll('td'))
+                .map((td, index) => {
+                    const headerText = table.querySelectorAll('thead th')[index]?.innerText || '';
+                    if (headerText.toLowerCase() === 'actions') return null;
+                    
+                    let text = td.innerText.replace(/[\n\t]/g, ' ').trim();
+                    text = text.replace(/\s+/g, ' ');
+                    return `"${text.replace(/"/g, '""')}"`;
+                }).filter(c => c !== null);
+            csv.push(cols.join(','));
+        }
     });
-    document.getElementById('stat-revenue').innerText = '₱' + total.toLocaleString();
 
-    const recentRows = visitors.slice(0, 5).map(v => `
-        <tr>
-            <td>${v.id}</td>
-            <td style="font-weight: 700;">${v.name}</td>
-            <td>${v.resort}</td>
-            <td>${new Date(v.created_at).toLocaleDateString()}</td>
-        </tr>
-    `).join('');
-    document.getElementById('recent-visitor-rows').innerHTML = recentRows;
-    lucide.createIcons();
+    const csvContent = csv.join("\n");
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename || "export.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
+window.exportTableToCSV = exportTableToCSV;
+
+function applyVisitorFilters() {
+    const searchVal = document.getElementById('visitor-search')?.value.toLowerCase().trim() || '';
+    const dateVal = document.getElementById('visitor-date-filter')?.value || 'All';
+    const resortVal = document.getElementById('visitor-resort-filter')?.value || 'All';
+    const statusVal = document.getElementById('visitor-status-filter')?.value || 'All';
+
+    const table = document.getElementById('visitor-table');
+    if (!table) return;
+
+    const rows = table.querySelectorAll('tbody tr');
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const lastWeek = new Date(today);
+    lastWeek.setDate(lastWeek.getDate() - 7);
+
+    rows.forEach(row => {
+        const createdAtStr = row.getAttribute('data-created-at');
+        const resort = row.getAttribute('data-resort');
+        const status = row.getAttribute('data-status');
+        const text = row.innerText.toLowerCase();
+
+        const matchesSearch = !searchVal || text.includes(searchVal);
+        const matchesStatus = statusVal === 'All' || status === statusVal;
+        const matchesResort = resortVal === 'All' || resort === resortVal;
+
+        let matchesDate = true;
+        if (createdAtStr && dateVal !== 'All') {
+            const date = parseSQLiteDate(createdAtStr);
+            if (dateVal === 'Daily') {
+                matchesDate = date >= today;
+            } else if (dateVal === 'Weekly') {
+                matchesDate = date >= lastWeek;
+            } else if (dateVal === 'Monthly') {
+                matchesDate = date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+            }
+        }
+
+        if (matchesSearch && matchesStatus && matchesResort && matchesDate) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+window.applyVisitorFilters = applyVisitorFilters;
+
+function applyPaymentFilters() {
+    const searchVal = document.getElementById('payment-search')?.value.toLowerCase().trim() || '';
+    const dateVal = document.getElementById('payment-date-filter')?.value || 'All';
+    const resortVal = document.getElementById('payment-resort-filter')?.value || 'All';
+    const statusVal = document.getElementById('payment-status-filter')?.value || 'All';
+
+    const table = document.getElementById('payment-table');
+    if (!table) return;
+
+    const rows = table.querySelectorAll('tbody tr');
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const lastWeek = new Date(today);
+    lastWeek.setDate(lastWeek.getDate() - 7);
+
+    rows.forEach(row => {
+        const createdAtStr = row.getAttribute('data-created-at');
+        const resort = row.getAttribute('data-resort');
+        const status = row.getAttribute('data-payment-status');
+        const text = row.innerText.toLowerCase();
+
+        const matchesSearch = !searchVal || text.includes(searchVal);
+        const matchesStatus = statusVal === 'All' || status === statusVal;
+        const matchesResort = resortVal === 'All' || resort === resortVal;
+
+        let matchesDate = true;
+        if (createdAtStr && dateVal !== 'All') {
+            const date = parseSQLiteDate(createdAtStr);
+            if (dateVal === 'Daily') {
+                matchesDate = date >= today;
+            } else if (dateVal === 'Weekly') {
+                matchesDate = date >= lastWeek;
+            } else if (dateVal === 'Monthly') {
+                matchesDate = date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+            }
+        }
+
+        if (matchesSearch && matchesStatus && matchesResort && matchesDate) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+window.applyPaymentFilters = applyPaymentFilters;
+
+function applyAttendanceFilters() {
+    const searchVal = document.getElementById('attendance-search')?.value.toLowerCase().trim() || '';
+    const dateVal = document.getElementById('attendance-date-filter')?.value || 'All';
+    const statusVal = document.getElementById('attendance-status-filter')?.value || 'All';
+
+    const table = document.getElementById('attendance-table');
+    if (!table) return;
+
+    const rows = table.querySelectorAll('tbody tr');
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const lastWeek = new Date(today);
+    lastWeek.setDate(lastWeek.getDate() - 7);
+
+    rows.forEach(row => {
+        const timeInStr = row.getAttribute('data-time-in');
+        const status = row.getAttribute('data-status');
+        const text = row.innerText.toLowerCase();
+
+        const matchesSearch = !searchVal || text.includes(searchVal);
+        const matchesStatus = statusVal === 'All' || status === statusVal;
+
+        let matchesDate = true;
+        if (timeInStr && dateVal !== 'All') {
+            const date = parseSQLiteDate(timeInStr);
+            if (dateVal === 'Daily') {
+                matchesDate = date >= today;
+            } else if (dateVal === 'Weekly') {
+                matchesDate = date >= lastWeek;
+            } else if (dateVal === 'Monthly') {
+                matchesDate = date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+            }
+        }
+
+        if (matchesSearch && matchesStatus && matchesDate) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+window.applyAttendanceFilters = applyAttendanceFilters;
+
+async function deleteAttendanceLog(id) {
+    if (!(await showConfirm(`Are you sure you want to delete this attendance record? This action cannot be undone.`))) return;
+
+    try {
+        const response = await fetch(`/api/attendance/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            alert("Record deleted successfully.");
+            showView('attendance');
+        } else {
+            const err = await response.json();
+            alert("Deletion failed: " + (err.error || "Unknown error."));
+        }
+    } catch (err) {
+        alert("Network failure.");
+    }
+}
+window.deleteAttendanceLog = deleteAttendanceLog;
+

@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tourist Registration - Tibiao Eco-Park</title>
+    
+    <link rel="stylesheet" href="../css/fonts.css">
+    
+    <script src="../js/vendor/lucide.js"></script>
+    <script src="../js/vendor/html5-qrcode.js"></script>
+    <script src="../js/vendor/qrcode.js"></script>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="app-container">
+
+        <section id="landing-screen" class="fade-in" style="padding: 0; justify-content: space-between;">
+            <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 2.5rem 1.75rem 1.5rem 1.75rem; width: 100%;">
+                <div class="landing-top">
+                    <div class="logo-container">
+                        <img src="../images/logo.png" alt="Tibiao Tourism Logo" class="app-logo">
+                    </div>
+                    <h1 class="landing-title">Tibiao <br> <span style="white-space: nowrap;">Eco-Adventure Park</span></h1>
+                    <p class="landing-subtitle">Tourist Digital Logging</p>
+                </div>
+
+                <div class="landing-middle">
+                    <div class="landing-visual">
+                        <div class="visual-circle"></div>
+                        <i data-lucide="qr-code" class="visual-icon"></i>
+                    </div>
+                    <p class="landing-hint">Scan your QR code to begin</p>
+                </div>
+
+                <div class="landing-bottom" style="width: 100%;">
+                    <button class="btn btn-primary btn-large" onclick="startQRScanner()">
+                        <i data-lucide="camera"></i> Scan QR to Register
+                    </button>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <footer style="width: 100%; position: relative; margin-top: auto; overflow: hidden; background: transparent; display: flex; flex-direction: column; shrink-0;">
+                <!-- Eco Park Silhouette SVG -->
+                <div style="width: 100%; height: 3.5rem; position: relative; user-select: none; pointer-events: none;">
+                    <svg style="position: absolute; bottom: 0; left: 0; width: 100%; height: 100%;" viewBox="0 0 1440 120" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <!-- Conifer / Pine Tree -->
+                            <g id="tree-pine">
+                                <path d="M10 0 L3 18 L7 18 L1 36 L6 36 L0 55 L20 55 L14 36 L19 36 L13 18 L17 18 Z" />
+                                <rect x="9" y="55" width="2" height="8" />
+                            </g>
+                            <!-- Deciduous / Canopy Tree -->
+                            <g id="tree-canopy">
+                                <path d="M10 45 C4 45 0 40 0 32 C0 28 2 24 5 21 C3 16 6 10 12 10 C14 6 20 6 24 10 C28 10 32 15 31 20 C34 23 35 28 34 32 C34 40 30 45 24 45 Z" />
+                                <rect x="15" y="44" width="3" height="12" />
+                            </g>
+                            <!-- Palm Tree -->
+                            <g id="tree-palm">
+                                <path d="M8 60 Q12 30 9 15 L11 15 Q14 30 10 60 Z" />
+                                <path d="M10 15 Q22 8 30 18 Q20 18 10 15 Z" />
+                                <path d="M10 15 Q0 6 -8 14 Q2 15 10 15 Z" />
+                                <path d="M10 15 Q26 18 28 28 Q18 24 10 15 Z" />
+                                <path d="M10 15 Q-4 18 -6 28 Q4 24 10 15 Z" />
+                                <path d="M10 15 Q14 0 16 -10 Q12 0 10 15 Z" />
+                            </g>
+                        </defs>
+
+                        <!-- Layer 1: Back Layer (Lightest Green / Most Opacity) -->
+                        <g style="fill: rgba(6, 95, 70, 0.15);">
+                            <path d="M0 120 L0 75 Q 360 45, 720 70 T 1440 60 L 1440 120 Z" />
+                            <use href="#tree-pine" transform="translate(150, 40) scale(0.5)" />
+                            <use href="#tree-pine" transform="translate(180, 42) scale(0.45)" />
+                            <use href="#tree-canopy" transform="translate(320, 38) scale(0.5)" />
+                            <use href="#tree-palm" transform="translate(500, 32) scale(0.55)" />
+                            <use href="#tree-palm" transform="translate(530, 35) scale(0.5)" />
+                            <use href="#tree-pine" transform="translate(750, 38) scale(0.5)" />
+                            <use href="#tree-canopy" transform="translate(900, 48) scale(0.55)" />
+                            <use href="#tree-pine" transform="translate(1100, 42) scale(0.5)" />
+                            <use href="#tree-palm" transform="translate(1250, 38) scale(0.55)" />
+                        </g>
+
+                        <!-- Layer 2: Middle Layer (Medium Green) -->
+                        <g style="fill: rgba(4, 120, 87, 0.35);">
+                            <path d="M0 120 L0 85 Q 250 65, 550 90 T 1100 75 T 1440 80 L 1440 120 Z" />
+                            <use href="#tree-canopy" transform="translate(80, 52) scale(0.7)" />
+                            <use href="#tree-pine" transform="translate(220, 48) scale(0.75)" />
+                            <use href="#tree-pine" transform="translate(250, 50) scale(0.65)" />
+                            <use href="#tree-palm" transform="translate(400, 45) scale(0.75)" />
+                            <use href="#tree-palm" transform="translate(440, 50) scale(0.7)" />
+                            <use href="#tree-canopy" transform="translate(650, 52) scale(0.7)" />
+                            <use href="#tree-pine" transform="translate(800, 44) scale(0.75)" />
+                            <use href="#tree-palm" transform="translate(980, 42) scale(0.8)" />
+                            <use href="#tree-canopy" transform="translate(1150, 48) scale(0.7)" />
+                            <use href="#tree-pine" transform="translate(1300, 45) scale(0.75)" />
+                        </g>
+
+                        <!-- Layer 3: Foreground Layer (Darkest Green, merges with background) -->
+                        <g style="fill: #022c22;">
+                            <path d="M0 120 L0 100 Q 300 85, 600 105 T 1200 95 T 1440 100 L 1440 120 Z" />
+                            <use href="#tree-palm" transform="translate(50, 60) scale(0.95)" />
+                            <use href="#tree-canopy" transform="translate(180, 63) scale(0.9)" />
+                            <use href="#tree-pine" transform="translate(350, 60) scale(1.0)" />
+                            <use href="#tree-pine" transform="translate(480, 67) scale(0.95)" />
+                            <use href="#tree-palm" transform="translate(700, 65) scale(1.0)" />
+                            <use href="#tree-palm" transform="translate(750, 67) scale(0.85)" />
+                            <use href="#tree-canopy" transform="translate(900, 67) scale(0.9)" />
+                            <use href="#tree-pine" transform="translate(1050, 65) scale(1.0)" />
+                            <use href="#tree-palm" transform="translate(1200, 63) scale(0.95)" />
+                            <use href="#tree-canopy" transform="translate(1350, 67) scale(0.9)" />
+                        </g>
+                    </svg>
+                </div>
+
+                <!-- Footer Text Links and Info -->
+                <div style="background-color: #022c22; border-top: 1px solid rgba(6, 78, 59, 0.4); padding: 0.75rem 1rem; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 0.25rem;">
+                    <div style="font-size: 10px; font-weight: 700; tracking-wider; text-transform: uppercase; color: rgba(52, 211, 153, 0.8); text-align: center;">
+                        © 2026 Municipal Government of Tibiao, Antique
+                    </div>
+                </div>
+            </footer>
+        </section>
+
+        
+        <section id="scan-screen" class="hidden fade-in">
+            <header class="app-header">
+                <button class="header-back" onclick="stopQRScanner(); navigateTo('landing-screen')">
+                    <i data-lucide="chevron-left"></i>
+                </button>
+                <span class="header-title">Scanner</span>
+            </header>
+
+            <div class="scanner-container">
+                <div id="reader" style="width: 100%;"></div>
+                <p style="text-align: center; color: #9ca3af; font-size: 0.9rem; margin-top: 2rem;">
+                    Point your camera at the QR code
+                </p>
+            </div>
+
+        </section>
+
+
+        <section id="welcome-screen" class="hidden fade-in" style="padding: 0; justify-content: space-between;">
+            <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 2.5rem 2.5rem 1.5rem 2.5rem; width: 100%;">
+                <div class="logo-container">
+                    <img src="../images/logo.png" alt="Logo" class="app-logo">
+                </div>
+
+                <h2 class="welcome-subtitle">Welcome to</h2>
+                <h1 class="welcome-title">Tibiao <br> <span style="white-space: nowrap;">Eco-Adventure Park</span></h1>
+                <p style="font-size: 1.125rem; margin-bottom: 2rem; opacity: 0.8;">Tourist Digital Logging</p>
+
+                <div class="welcome-feature">
+                    <i data-lucide="check-circle" style="color: white; width: 16px;"></i>
+                    <span>Safe & Secure Registration</span>
+                </div>
+
+                <div style="width: 100%; margin-top: auto;">
+                    <button class="btn btn-white" onclick="navigateTo('registration-screen')">
+                        Tourist Registration
+                    </button>
+                    <p style="font-size: 0.8rem; margin-top: 1rem; opacity: 0.7;">Tap to begin your registration</p>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <footer style="width: 100%; position: relative; margin-top: auto; overflow: hidden; background: transparent; display: flex; flex-direction: column; shrink-0;">
+                <!-- Eco Park Silhouette SVG -->
+                <div style="width: 100%; height: 3.5rem; position: relative; user-select: none; pointer-events: none;">
+                    <svg style="position: absolute; bottom: 0; left: 0; width: 100%; height: 100%;" viewBox="0 0 1440 120" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <!-- Conifer / Pine Tree -->
+                            <g id="tree-pine">
+                                <path d="M10 0 L3 18 L7 18 L1 36 L6 36 L0 55 L20 55 L14 36 L19 36 L13 18 L17 18 Z" />
+                                <rect x="9" y="55" width="2" height="8" />
+                            </g>
+                            <!-- Deciduous / Canopy Tree -->
+                            <g id="tree-canopy">
+                                <path d="M10 45 C4 45 0 40 0 32 C0 28 2 24 5 21 C3 16 6 10 12 10 C14 6 20 6 24 10 C28 10 32 15 31 20 C34 23 35 28 34 32 C34 40 30 45 24 45 Z" />
+                                <rect x="15" y="44" width="3" height="12" />
+                            </g>
+                            <!-- Palm Tree -->
+                            <g id="tree-palm">
+                                <path d="M8 60 Q12 30 9 15 L11 15 Q14 30 10 60 Z" />
+                                <path d="M10 15 Q22 8 30 18 Q20 18 10 15 Z" />
+                                <path d="M10 15 Q0 6 -8 14 Q2 15 10 15 Z" />
+                                <path d="M10 15 Q26 18 28 28 Q18 24 10 15 Z" />
+                                <path d="M10 15 Q-4 18 -6 28 Q4 24 10 15 Z" />
+                                <path d="M10 15 Q14 0 16 -10 Q12 0 10 15 Z" />
+                            </g>
+                        </defs>
+
+                        <!-- Layer 1: Back Layer (Lightest Green / Most Opacity) -->
+                        <g style="fill: rgba(6, 95, 70, 0.15);">
+                            <path d="M0 120 L0 75 Q 360 45, 720 70 T 1440 60 L 1440 120 Z" />
+                            <use href="#tree-pine" transform="translate(150, 40) scale(0.5)" />
+                            <use href="#tree-pine" transform="translate(180, 42) scale(0.45)" />
+                            <use href="#tree-canopy" transform="translate(320, 38) scale(0.5)" />
+                            <use href="#tree-palm" transform="translate(500, 32) scale(0.55)" />
+                            <use href="#tree-palm" transform="translate(530, 35) scale(0.5)" />
+                            <use href="#tree-pine" transform="translate(750, 38) scale(0.5)" />
+                            <use href="#tree-canopy" transform="translate(900, 48) scale(0.55)" />
+                            <use href="#tree-pine" transform="translate(1100, 42) scale(0.5)" />
+                            <use href="#tree-palm" transform="translate(1250, 38) scale(0.55)" />
+                        </g>
+
+                        <!-- Layer 2: Middle Layer (Medium Green) -->
+                        <g style="fill: rgba(4, 120, 87, 0.35);">
+                            <path d="M0 120 L0 85 Q 250 65, 550 90 T 1100 75 T 1440 80 L 1440 120 Z" />
+                            <use href="#tree-canopy" transform="translate(80, 52) scale(0.7)" />
+                            <use href="#tree-pine" transform="translate(220, 48) scale(0.75)" />
+                            <use href="#tree-pine" transform="translate(250, 50) scale(0.65)" />
+                            <use href="#tree-palm" transform="translate(400, 45) scale(0.75)" />
+                            <use href="#tree-palm" transform="translate(440, 50) scale(0.7)" />
+                            <use href="#tree-canopy" transform="translate(650, 52) scale(0.7)" />
+                            <use href="#tree-pine" transform="translate(800, 44) scale(0.75)" />
+                            <use href="#tree-palm" transform="translate(980, 42) scale(0.8)" />
+                            <use href="#tree-canopy" transform="translate(1150, 48) scale(0.7)" />
+                            <use href="#tree-pine" transform="translate(1300, 45) scale(0.75)" />
+                        </g>
+
+                        <!-- Layer 3: Foreground Layer (Darkest Green, merges with background) -->
+                        <g style="fill: #022c22;">
+                            <path d="M0 120 L0 100 Q 300 85, 600 105 T 1200 95 T 1440 100 L 1440 120 Z" />
+                            <use href="#tree-palm" transform="translate(50, 60) scale(0.95)" />
+                            <use href="#tree-canopy" transform="translate(180, 63) scale(0.9)" />
+                            <use href="#tree-pine" transform="translate(350, 60) scale(1.0)" />
+                            <use href="#tree-pine" transform="translate(480, 67) scale(0.95)" />
+                            <use href="#tree-palm" transform="translate(700, 65) scale(1.0)" />
+                            <use href="#tree-palm" transform="translate(750, 67) scale(0.85)" />
+                            <use href="#tree-canopy" transform="translate(900, 67) scale(0.9)" />
+                            <use href="#tree-pine" transform="translate(1050, 65) scale(1.0)" />
+                            <use href="#tree-palm" transform="translate(1200, 63) scale(0.95)" />
+                            <use href="#tree-canopy" transform="translate(1350, 67) scale(0.9)" />
+                        </g>
+                    </svg>
+                </div>
+
+                <!-- Footer Text Links and Info -->
+                <div style="background-color: #022c22; border-top: 1px solid rgba(6, 78, 59, 0.4); padding: 0.75rem 1rem; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 0.25rem;">
+                    <div style="font-size: 10px; font-weight: 700; tracking-wider; text-transform: uppercase; color: rgba(52, 211, 153, 0.8); text-align: center;">
+                        © 2026 Municipal Government of Tibiao, Antique
+                    </div>
+                </div>
+            </footer>
+        </section>
+
+        
+        <section id="registration-screen" class="hidden fade-in">
+            <header class="app-header">
+                <button class="header-back" onclick="navigateTo('welcome-screen')">
+                    <i data-lucide="chevron-left"></i>
+                </button>
+                <div style="text-align: left; flex: 1; margin-left: 3.75rem;">
+                    <h3 style="font-size: 1rem;">Tourist Registration</h3>
+                    <p style="font-size: 0.75rem; opacity: 0.9;">Primary Visitor</p>
+                </div>
+            </header>
+
+            <div class="form-container">
+                <div class="step-indicator">
+                    <div class="step-dot"></div>
+                    <div class="step-dot active"></div>
+                    <div class="step-dot"></div>
+                </div>
+
+                <div class="alert-info">
+                    <i data-lucide="info" style="color: #f59e0b; width: 20px;"></i>
+                    <p>Please fill out all required fields accurately for verification.</p>
+                </div>
+
+                <form id="tourist-form">
+                    
+                    <div class="form-group">
+                        <label for="name">Full Name *</label>
+                        <input type="text" id="name" placeholder="Juan Dela Cruz" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="address">Address *</label>
+                        <input type="text" id="address" placeholder="Complete address" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="age">Age *</label>
+                            <input type="number" id="age" placeholder="Enter age" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="gender">Gender *</label>
+                            <select id="gender" required>
+                                <option value="" disabled selected>Select gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="status">Status *</label>
+                        <select id="status" required>
+                            <option value="Regular" selected>Regular</option>
+                            <option value="PWD">PWD</option>
+                            <option value="Senior Citizen">Senior Citizen</option>
+                        </select>
+                    </div>
+
+                    
+                    <div class="form-group">
+                        <label for="resort">Destination Resort *</label>
+                        <select id="resort" onchange="toggleOtherResort()" required>
+                            <option value="" disabled selected>Select resort</option>
+                            <option value="Calawag">Calawag</option>
+                            <option value="BlueWave">BlueWave</option>
+                            <option value="Campolly">Campolly</option>
+                            <option value="Others">Others</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="resort-other-group" style="display:none; margin-top: -0.5rem;">
+                        <label for="resort-other">Please specify destination *</label>
+                        <input type="text" id="resort-other" placeholder="Type your destination here">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="visitor-type">Visitor Type *</label>
+                        <select id="visitor-type" required>
+                            <option value="" disabled selected>Select type</option>
+                            <option value="Domestic Local">Domestic (Within Antique)</option>
+                            <option value="Domestic National">Domestic (Outside Antique)</option>
+                            <option value="Foreigner">Foreigner</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="duration">Duration of Stay *</label>
+                        <select id="duration" required>
+                            <option value="" disabled selected>Select duration</option>
+                            <option value="Same Day">Same Day Visit</option>
+                            <option value="Overnight">Overnight</option>
+                            <option value="2-3 Days">2-3 Days</option>
+                            <option value="Week Long">Week Long</option>
+                        </select>
+                    </div>
+
+                    
+                    <div class="members-section">
+                        <h3 style="font-size: 1.1rem; margin-bottom: 1rem; color: var(--dark);">Companion / Members</h3>
+                        <div id="members-list">
+                            
+                        </div>
+
+                        <button type="button" class="add-member-btn" id="add-member">
+                            <i data-lucide="plus"></i> Add Member
+                        </button>
+                    </div>
+
+                    <div style="padding: 2rem 0;">
+                        <button type="submit" class="btn btn-primary">
+                            Preview Registration <i data-lucide="arrow-right"></i>
+                        </button>
+                    </div>
+                </form>
+                <div style="height: 20px;"></div>
+            </div>
+        </section>
+
+        
+        <section id="preview-screen" class="hidden fade-in">
+            <header class="app-header">
+                <button class="header-back" onclick="navigateTo('registration-screen')">
+                    <i data-lucide="chevron-left"></i>
+                </button>
+                <span class="header-title">Registration Preview</span>
+            </header>
+
+            <div class="form-container">
+                <div class="step-indicator">
+                    <div class="step-dot"></div>
+                    <div class="step-dot"></div>
+                    <div class="step-dot active"></div>
+                </div>
+
+                
+                <div id="premium-payment-card"
+                    style="background: #f8fbff; border-radius: 24px; border: 1px solid #e2e8f0; padding: 1.75rem; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); margin-bottom: 2rem;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 1.5rem;">
+                        <div
+                            style="background: #fff; width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                            <i data-lucide="banknote" style="color: #1e293b; width: 22px;"></i>
+                        </div>
+                        <h2
+                            style="font-family: 'Montserrat'; font-size: 1.25rem; font-weight: 800; color: #1e293b; margin: 0;">
+                            Payment Record</h2>
+                    </div>
+
+                    <div id="preview-items-list"
+                        style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 1.5rem;">
+                        
+                    </div>
+
+                    <div style="border-top: 2px dashed #cbd5e1; margin-bottom: 1.5rem; opacity: 0.5;"></div>
+
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <span style="font-size: 1.5rem; font-weight: 800; color: #059669;">Total Payable</span>
+                        <span id="preview-total-amount"
+                            style="font-size: 1.5rem; font-weight: 800; color: #059669;">₱0.00</span>
+                    </div>
+
+                    <div id="payment-help-notes" style="font-size: 0.75rem; color: #64748b; line-height: 1.6;">
+                        <p style="margin-bottom: 4px;">* Fees: Within Antique ₱20 • Outside Antique / Foreigner ₱50.</p>
+                        <p>* 20% Discount applied for PWD and Seniors (60+).</p>
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <button class="btn btn-primary" onclick="confirmRegistration()">
+                        Submit
+                    </button>
+                    <button class="btn btn-outline" onclick="navigateTo('registration-screen')">
+                        Go Back & Edit
+                    </button>
+                </div>
+
+                <div style="height: 50px;"></div>
+            </div>
+        </section>
+
+        
+        <section id="success-screen" class="hidden fade-in"
+            style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center;">
+            <div
+                style="width: 80px; height: 80px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 2rem; color: white;">
+                <i data-lucide="check-circle-2" style="width: 48px; height: 48px;"></i>
+            </div>
+            <h2 class="welcome-title" style="color: var(--dark); font-size: 1.5rem;">Registration Successful!</h2>
+            <p style="color: var(--text-muted); margin-bottom: 2rem;">Your registration has been submitted. Please
+                proceed to the cashier for payment.</p>
+
+            <div id="summary-card" class="payment-summary" style="width: 100%; text-align: left;">
+                
+            </div>
+
+            <div class="id-badge">
+                <div id="qrcode" style="display: flex; justify-content: center; align-items: center; margin: 0 auto 1.5rem auto; padding: 10px; background: white; border-radius: 16px; width: 160px; height: 160px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;"></div>
+                <p>Registration ID</p>
+                <div
+                    style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 0.5rem;">
+                    <h1 id="generated-id" style="margin: 0;">TIB-XXXX-XXXX</h1>
+                    <button onclick="copyID()" class="copy-btn" title="Copy ID">
+                        <i data-lucide="copy" style="width: 18px; height: 18px;"></i>
+                    </button>
+                </div>
+                <p style="font-size: 0.75rem; margin-top: 0.5rem; opacity: 0.7;">Keep this ID for check-out</p>
+            </div>
+
+            <button class="btn btn-primary" style="margin-top: 2rem;" onclick="location.reload()">
+                Back to Home <i data-lucide="home"></i>
+            </button>
+        </section>
+
+    </div>
+
+    <script src="../js/app.js"></script>
+    <script>
+        // Initialize lucide icons
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>
