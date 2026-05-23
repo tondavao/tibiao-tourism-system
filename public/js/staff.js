@@ -730,42 +730,7 @@ async function renderAttendance() {
                 </div>
             </div>
             <div class="bg-white rounded-xl shadow-lg border border-slate-300 p-6 md:p-8 fade-in">
-                <h2 class="text-xl font-bold text-slate-800 mb-4">Staff Time Logs Table</h2>
-                <!-- Actions Row (HIDDEN ON PRINT) -->
-                <div class="flex justify-end gap-3 mb-6 no-print">
-                    <button onclick="window.print()" class="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-bold py-2.5 px-4 rounded-xl border border-slate-200 shadow-sm transition-all text-xs uppercase tracking-wider">
-                        <i data-lucide="printer" class="w-4 h-4 text-slate-500"></i> Print
-                    </button>
-                    <button onclick="exportTableToCSV('attendance-table', 'attendance_logs.csv')" class="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-bold py-2.5 px-4 rounded-xl border border-slate-200 shadow-sm transition-all text-xs uppercase tracking-wider">
-                        <i data-lucide="download" class="w-4 h-4 text-slate-500"></i> Export
-                    </button>
-                </div>
-
-                <!-- Filters & Search Bar Row -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 no-print">
-                    <!-- Search -->
-                    <div class="relative">
-                        <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
-                        <input type="text" id="attendance-search" placeholder="Search logs..." oninput="applyAttendanceFilters()"
-                            class="w-full py-2.5 pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all font-medium placeholder-slate-400">
-                    </div>
-                    <!-- Status Filter -->
-                    <select id="attendance-status-filter" onchange="applyAttendanceFilters()"
-                        class="py-2.5 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all font-semibold text-slate-700 cursor-pointer">
-                        <option value="All">All Statuses</option>
-                        <option value="IN">Active (On Duty)</option>
-                        <option value="BREAK">On Break</option>
-                        <option value="OUT">Timed Out</option>
-                    </select>
-                    <!-- Date Filter -->
-                    <select id="attendance-date-filter" onchange="applyAttendanceFilters()"
-                        class="py-2.5 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all font-semibold text-slate-700 cursor-pointer">
-                        <option value="All">All Dates</option>
-                        <option value="Daily">Today</option>
-                        <option value="Weekly">This Week</option>
-                        <option value="Monthly">This Month</option>
-                    </select>
-                </div>
+                <h2 class="text-xl font-bold text-slate-800 mb-6">Staff Time Logs Table</h2>
 
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse" id="attendance-table">
@@ -1208,9 +1173,12 @@ function applyPaymentFilters() {
 window.applyPaymentFilters = applyPaymentFilters;
 
 function applyAttendanceFilters() {
-    const searchVal = document.getElementById('attendance-search')?.value.toLowerCase().trim() || '';
-    const dateVal = document.getElementById('attendance-date-filter')?.value || 'All';
-    const statusVal = document.getElementById('attendance-status-filter')?.value || 'All';
+    const searchInput = document.getElementById('attendance-search');
+    const searchVal = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    const dateFilter = document.getElementById('attendance-date-filter');
+    const dateVal = dateFilter ? dateFilter.value : 'All';
+    const statusFilter = document.getElementById('attendance-status-filter');
+    const statusVal = statusFilter ? statusFilter.value : 'All';
 
     const table = document.getElementById('attendance-table');
     if (!table) return;
