@@ -472,9 +472,13 @@ async function logout() {
 async function refreshProfile() {
     const nameEl = document.getElementById('user-profile-name');
     const roleEl = document.getElementById('user-profile-role');
+    const sidebarNameEl = document.getElementById('sidebar-profile-name');
+    const sidebarRoleEl = document.getElementById('sidebar-profile-role');
     if (!currentUser) return;
     if (nameEl) nameEl.innerText = currentUser.username;
-    if (roleEl) roleEl.innerText = "Staff";
+    if (roleEl) roleEl.innerText = currentUser.role || "Staff";
+    if (sidebarNameEl) sidebarNameEl.innerText = currentUser.username;
+    if (sidebarRoleEl) sidebarRoleEl.innerText = currentUser.role || "Staff Portal";
 }
 
 function toggleSidebar() {

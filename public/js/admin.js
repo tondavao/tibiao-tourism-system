@@ -1122,6 +1122,8 @@ async function logout() {
 async function refreshProfile() {
     const nameEl = document.getElementById('admin-profile-name');
     const roleEl = document.getElementById('admin-profile-role');
+    const sidebarNameEl = document.getElementById('sidebar-profile-name');
+    const sidebarRoleEl = document.getElementById('sidebar-profile-role');
 
     if (!currentAdmin) return;
 
@@ -1131,7 +1133,6 @@ async function refreshProfile() {
         const me = users.find(u => u.id == currentAdmin.id);
 
         if (me) {
-
             if (me.username !== currentAdmin.username || me.role !== currentAdmin.role) {
                 currentAdmin.username = me.username;
                 currentAdmin.role = me.role;
@@ -1139,13 +1140,19 @@ async function refreshProfile() {
             }
             if (nameEl) nameEl.innerText = me.username;
             if (roleEl) roleEl.innerText = me.role;
+            if (sidebarNameEl) sidebarNameEl.innerText = me.username;
+            if (sidebarRoleEl) sidebarRoleEl.innerText = me.role;
         } else {
             if (nameEl) nameEl.innerText = currentAdmin.username;
             if (roleEl) roleEl.innerText = currentAdmin.role;
+            if (sidebarNameEl) sidebarNameEl.innerText = currentAdmin.username;
+            if (sidebarRoleEl) sidebarRoleEl.innerText = currentAdmin.role;
         }
     } catch (err) {
         if (nameEl) nameEl.innerText = currentAdmin.username;
         if (roleEl) roleEl.innerText = currentAdmin.role;
+        if (sidebarNameEl) sidebarNameEl.innerText = currentAdmin.username;
+        if (sidebarRoleEl) sidebarRoleEl.innerText = currentAdmin.role;
     }
 }
 

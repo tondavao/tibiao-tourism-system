@@ -259,30 +259,11 @@ body {
 
 /* Scanner Screen (Camera overlay layout) */
 #scan-screen {
-    background-color: var(--dark);
+    background-color: var(--white);
     flex: 1;
     display: flex;
     flex-direction: column;
-    color: white;
-}
-
-#scan-screen .app-header {
-    background-color: var(--dark);
-    color: white;
-    border-bottom: 1px solid #1e293b;
-}
-
-#scan-screen .header-title {
-    color: white;
-}
-
-#scan-screen .header-back {
-    background: #1e293b;
-    color: white;
-}
-
-#scan-screen .header-back:hover {
-    background: #334155;
+    color: var(--text-main);
 }
 
 .scanner-container {
